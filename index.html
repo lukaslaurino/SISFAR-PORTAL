@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISFAR — Sistema Integrado de Farmácia Prisional</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #1e293b;
+      --border-subtle: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      /* Oficial Colors */
+      --oficial-accent: #10b981;
+      --oficial-bg: rgba(16, 185, 129, 0.08);
+      --oficial-border: rgba(16, 185, 129, 0.25);
+      --oficial-badge-bg: rgba(16, 185, 129, 0.15);
+      --oficial-badge-text: #34d399;
+      --oficial-btn: #059669;
+      --oficial-btn-hover: #10b981;
+      
+      /* Audit Colors */
+      --audit-accent: #f59e0b;
+      --audit-bg: rgba(245, 158, 11, 0.08);
+      --audit-border: rgba(245, 158, 11, 0.25);
+      --audit-badge-bg: rgba(245, 158, 11, 0.15);
+      --audit-badge-text: #fbbf24;
+      --audit-btn: #d97706;
+      --audit-btn-hover: #f59e0b;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      flex: 1;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 0.35rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* Section Styles */
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-pill {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+    }
+
+    .section-pill.oficial {
+      background: var(--oficial-badge-bg);
+      color: var(--oficial-badge-text);
+      border: 1px solid var(--oficial-border);
+    }
+
+    .section-pill.audit {
+      background: var(--audit-badge-bg);
+      color: var(--audit-badge-text);
+      border: 1px solid var(--audit-border);
+    }
+
+    .section-heading {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .grid-units {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border-subtle);
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card.oficial {
+      border-color: var(--oficial-border);
+      background: linear-gradient(180deg, var(--oficial-bg) 0%, var(--bg-card) 60%);
+    }
+
+    .card.oficial:hover {
+      border-color: var(--oficial-accent);
+    }
+
+    .card.audit {
+      border-color: var(--audit-border);
+      background: linear-gradient(180deg, var(--audit-bg) 0%, var(--bg-card) 60%);
+    }
+
+    .card.audit:hover {
+      border-color: var(--audit-accent);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .unit-acronym {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .badge-status {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .badge-status.oficial {
+      background-color: var(--oficial-badge-bg);
+      color: var(--oficial-badge-text);
+      border: 1px solid var(--oficial-border);
+    }
+
+    .badge-status.audit {
+      background-color: var(--audit-badge-bg);
+      color: var(--audit-badge-text);
+      border: 1px solid var(--audit-border);
+    }
+
+    .unit-name {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      min-height: 2.6rem;
+    }
+
+    /* Buttons */
+    .btn-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: var(--radius-md);
+      transition: background-color 0.15s ease, opacity 0.15s ease;
+      color: #ffffff;
+    }
+
+    .btn-action.oficial {
+      background-color: var(--oficial-btn);
+    }
+
+    .btn-action.oficial:hover {
+      background-color: var(--oficial-btn-hover);
+    }
+
+    .btn-action.audit {
+      background-color: var(--audit-btn);
+    }
+
+    .btn-action.audit:hover {
+      background-color: var(--audit-btn-hover);
+    }
+
+    .btn-action svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    footer p + p {
+      margin-top: 0.35rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1.5rem 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .grid-units {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 12h6"/>
+          <path d="M12 9v6"/>
+        </svg>
+      </div>
+      <h1>SISFAR</h1>
+      <p class="subtitle">Sistema Integrado de Farmácia Prisional</p>
+    </header>
+
+    <!-- OPERAÇÃO OFICIAL -->
+    <section>
+      <div class="section-title-wrap">
+        <span class="section-pill oficial">Produção</span>
+        <h2 class="section-heading">Operação Oficial</h2>
+      </div>
+
+      <div class="grid-units">
+        <!-- CPPA OFICIAL -->
+        <div class="card oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">CPPA</span>
+              <span class="badge-status oficial">Oficial</span>
+            </div>
+            <p class="unit-name">Cadeia Pública de Porto Alegre</p>
+          </div>
+          <a id="link-cppa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span>Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <!-- PEPOA OFICIAL -->
+        <div class="card oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">PEPOA</span>
+              <span class="badge-status oficial">Oficial</span>
+            </div>
+            <p class="unit-name">Penitenciária Estadual de Porto Alegre</p>
+          </div>
+          <a id="link-pepoa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span>Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <!-- MADRE OFICIAL -->
+        <div class="card oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">MADRE</span>
+              <span class="badge-status oficial">Oficial</span>
+            </div>
+            <p class="unit-name">Presídio Estadual Feminino Madre Pelletier</p>
+          </div>
+          <a id="link-madre-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span>Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOMOLOGAÇÃO / AUDIT -->
+    <section>
+      <div class="section-title-wrap">
+        <span class="section-pill audit">Homologação</span>
+        <h2 class="section-heading">Ambientes de Homologação / AUDIT</h2>
+      </div>
+
+      <div class="grid-units">
+        <!-- CPPA AUDIT -->
+        <div class="card audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">CPPA</span>
+              <span class="badge-status audit">AUDIT</span>
+            </div>
+            <p class="unit-name">Cadeia Pública de Porto Alegre</p>
+          </div>
+          <a id="link-cppa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span>Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <!-- PEPOA AUDIT -->
+        <div class="card audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">PEPOA</span>
+              <span class="badge-status audit">AUDIT</span>
+            </div>
+            <p class="unit-name">Penitenciária Estadual de Porto Alegre</p>
+          </div>
+          <a id="link-pepoa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span>Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <!-- MADRE AUDIT -->
+        <div class="card audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">MADRE</span>
+              <span class="badge-status audit">AUDIT</span>
+            </div>
+            <p class="unit-name">Presídio Estadual Feminino Madre Pelletier</p>
+          </div>
+          <a id="link-madre-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span>Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p><strong>SISFAR</strong> — Sistema Integrado de Farmácia Prisional</p>
+    <p>Acesso restrito e institucional aos serviços de saúde penitenciária.</p>
+  </footer>
+
+  <script src="links.js"></script>
+  <script>
+    (function () {
+      if (typeof SISFAR_LINKS === 'undefined') {
+        console.error('SISFAR_LINKS não foi carregado.');
+        return;
+      }
+      var mapping = {
+        'link-cppa-oficial': SISFAR_LINKS.cppaOficial,
+        'link-pepoa-oficial': SISFAR_LINKS.pepoaOficial,
+        'link-madre-oficial': SISFAR_LINKS.madreOficial,
+        'link-cppa-audit': SISFAR_LINKS.cppaAudit,
+        'link-pepoa-audit': SISFAR_LINKS.pepoaAudit,
+        'link-madre-audit': SISFAR_LINKS.madreAudit
+      };
+      for (var id in mapping) {
+        if (Object.prototype.hasOwnProperty.call(mapping, id)) {
+          var el = document.getElementById(id);
+          var url = mapping[id];
+          if (el && url) {
+            el.href = url;
+            el.target = '_blank';
+            el.rel = 'noopener noreferrer';
+          }
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
