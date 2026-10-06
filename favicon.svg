@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with subtle border radius and shadow feel -->
+  <rect width="32" height="32" rx="7" fill="url(#bgGrad)"/>
+  <!-- Institutional Shield & Medical Cross Motif -->
+  <path d="M16 5.5 C19.5 7 23.5 7.5 24.5 8 C24.5 14.5 22 21.5 16 26.5 C10 21.5 7.5 14.5 7.5 8 C8.5 7.5 12.5 7 16 5.5 Z" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round" opacity="0.35"/>
+  <!-- Bright Medical Cross in Center -->
+  <path d="M13.5 10.5 H18.5 V13.5 H21.5 V18.5 H18.5 V21.5 H13.5 V18.5 H10.5 V13.5 H13.5 Z" fill="#ffffff"/>
+</svg>

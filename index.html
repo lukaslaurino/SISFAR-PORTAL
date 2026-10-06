@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SISFAR — Sistema Integrado de Farmácia Prisional</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -221,6 +223,12 @@
       border: 1px solid var(--audit-border);
     }
 
+    .badge-status.inactive {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
     .unit-name {
       font-size: 0.875rem;
       color: var(--text-secondary);
@@ -260,6 +268,13 @@
       background-color: var(--audit-btn-hover);
     }
 
+    .btn-action.disabled {
+      background-color: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     .btn-action svg {
       width: 16px;
       height: 16px;
@@ -277,6 +292,20 @@
 
     footer p + p {
       margin-top: 0.35rem;
+    }
+
+    .footer-admin-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      display: inline-block;
+      margin-top: 0.5rem;
+      transition: color 0.15s;
+    }
+
+    .footer-admin-link:hover {
+      color: var(--text-secondary);
+      text-decoration: underline;
     }
 
     /* Responsive */
@@ -315,48 +344,48 @@
         <h2 class="section-heading">Operação Oficial</h2>
       </div>
 
-      <div class="grid-units">
+      <div class="grid-units" id="gridOficial">
         <!-- CPPA OFICIAL -->
-        <div class="card oficial">
+        <div class="card oficial" id="card-cppa-oficial">
           <div>
             <div class="card-header">
               <span class="unit-acronym">CPPA</span>
-              <span class="badge-status oficial">Oficial</span>
+              <span class="badge-status oficial" id="badge-cppa-oficial">Oficial</span>
             </div>
-            <p class="unit-name">Cadeia Pública de Porto Alegre</p>
+            <p class="unit-name" id="name-cppa-oficial">Cadeia Pública de Porto Alegre</p>
           </div>
           <a id="link-cppa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
-            <span>Acessar Ambiente Oficial</span>
+            <span id="label-cppa-oficial">Acessar Ambiente Oficial</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
 
         <!-- PEPOA OFICIAL -->
-        <div class="card oficial">
+        <div class="card oficial" id="card-pepoa-oficial">
           <div>
             <div class="card-header">
               <span class="unit-acronym">PEPOA</span>
-              <span class="badge-status oficial">Oficial</span>
+              <span class="badge-status oficial" id="badge-pepoa-oficial">Oficial</span>
             </div>
-            <p class="unit-name">Penitenciária Estadual de Porto Alegre</p>
+            <p class="unit-name" id="name-pepoa-oficial">Penitenciária Estadual de Porto Alegre</p>
           </div>
           <a id="link-pepoa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
-            <span>Acessar Ambiente Oficial</span>
+            <span id="label-pepoa-oficial">Acessar Ambiente Oficial</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
 
         <!-- MADRE OFICIAL -->
-        <div class="card oficial">
+        <div class="card oficial" id="card-madre-oficial">
           <div>
             <div class="card-header">
               <span class="unit-acronym">MADRE</span>
-              <span class="badge-status oficial">Oficial</span>
+              <span class="badge-status oficial" id="badge-madre-oficial">Oficial</span>
             </div>
-            <p class="unit-name">Presídio Estadual Feminino Madre Pelletier</p>
+            <p class="unit-name" id="name-madre-oficial">Presídio Estadual Feminino Madre Pelletier</p>
           </div>
           <a id="link-madre-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
-            <span>Acessar Ambiente Oficial</span>
+            <span id="label-madre-oficial">Acessar Ambiente Oficial</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
@@ -370,48 +399,48 @@
         <h2 class="section-heading">Ambientes de Homologação / AUDIT</h2>
       </div>
 
-      <div class="grid-units">
+      <div class="grid-units" id="gridAudit">
         <!-- CPPA AUDIT -->
-        <div class="card audit">
+        <div class="card audit" id="card-cppa-audit">
           <div>
             <div class="card-header">
               <span class="unit-acronym">CPPA</span>
-              <span class="badge-status audit">AUDIT</span>
+              <span class="badge-status audit" id="badge-cppa-audit">AUDIT</span>
             </div>
-            <p class="unit-name">Cadeia Pública de Porto Alegre</p>
+            <p class="unit-name" id="name-cppa-audit">Cadeia Pública de Porto Alegre</p>
           </div>
           <a id="link-cppa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
-            <span>Acessar Homologação</span>
+            <span id="label-cppa-audit">Acessar Homologação</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
 
         <!-- PEPOA AUDIT -->
-        <div class="card audit">
+        <div class="card audit" id="card-pepoa-audit">
           <div>
             <div class="card-header">
               <span class="unit-acronym">PEPOA</span>
-              <span class="badge-status audit">AUDIT</span>
+              <span class="badge-status audit" id="badge-pepoa-audit">AUDIT</span>
             </div>
-            <p class="unit-name">Penitenciária Estadual de Porto Alegre</p>
+            <p class="unit-name" id="name-pepoa-audit">Penitenciária Estadual de Porto Alegre</p>
           </div>
           <a id="link-pepoa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
-            <span>Acessar Homologação</span>
+            <span id="label-pepoa-audit">Acessar Homologação</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
 
         <!-- MADRE AUDIT -->
-        <div class="card audit">
+        <div class="card audit" id="card-madre-audit">
           <div>
             <div class="card-header">
               <span class="unit-acronym">MADRE</span>
-              <span class="badge-status audit">AUDIT</span>
+              <span class="badge-status audit" id="badge-madre-audit">AUDIT</span>
             </div>
-            <p class="unit-name">Presídio Estadual Feminino Madre Pelletier</p>
+            <p class="unit-name" id="name-madre-audit">Presídio Estadual Feminino Madre Pelletier</p>
           </div>
           <a id="link-madre-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
-            <span>Acessar Homologação</span>
+            <span id="label-madre-audit">Acessar Homologação</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
@@ -422,33 +451,87 @@
   <footer>
     <p><strong>SISFAR</strong> — Sistema Integrado de Farmácia Prisional</p>
     <p>Acesso restrito e institucional aos serviços de saúde penitenciária.</p>
+    <p><a href="admin/" class="footer-admin-link">⚙ Central Administrativa de Links</a></p>
   </footer>
 
   <script src="links.js"></script>
   <script>
     (function () {
-      if (typeof SISFAR_LINKS === 'undefined') {
-        console.error('SISFAR_LINKS não foi carregado.');
-        return;
-      }
-      var mapping = {
-        'link-cppa-oficial': SISFAR_LINKS.cppaOficial,
-        'link-pepoa-oficial': SISFAR_LINKS.pepoaOficial,
-        'link-madre-oficial': SISFAR_LINKS.madreOficial,
-        'link-cppa-audit': SISFAR_LINKS.cppaAudit,
-        'link-pepoa-audit': SISFAR_LINKS.pepoaAudit,
-        'link-madre-audit': SISFAR_LINKS.madreAudit
-      };
-      for (var id in mapping) {
-        if (Object.prototype.hasOwnProperty.call(mapping, id)) {
-          var el = document.getElementById(id);
-          var url = mapping[id];
-          if (el && url) {
-            el.href = url;
-            el.target = '_blank';
-            el.rel = 'noopener noreferrer';
+      function applyConfig(cfg) {
+        if (!cfg) return;
+        var map = {
+          'cppaOficial': { link: 'link-cppa-oficial', name: 'name-cppa-oficial', badge: 'badge-cppa-oficial', label: 'label-cppa-oficial', type: 'oficial' },
+          'pepoaOficial': { link: 'link-pepoa-oficial', name: 'name-pepoa-oficial', badge: 'badge-pepoa-oficial', label: 'label-pepoa-oficial', type: 'oficial' },
+          'madreOficial': { link: 'link-madre-oficial', name: 'name-madre-oficial', badge: 'badge-madre-oficial', label: 'label-madre-oficial', type: 'oficial' },
+          'cppaAudit': { link: 'link-cppa-audit', name: 'name-cppa-audit', badge: 'badge-cppa-audit', label: 'label-cppa-audit', type: 'audit' },
+          'pepoaAudit': { link: 'link-pepoa-audit', name: 'name-pepoa-audit', badge: 'badge-pepoa-audit', label: 'label-pepoa-audit', type: 'audit' },
+          'madreAudit': { link: 'link-madre-audit', name: 'name-madre-audit', badge: 'badge-madre-audit', label: 'label-madre-audit', type: 'audit' }
+        };
+
+        for (var key in map) {
+          if (Object.prototype.hasOwnProperty.call(map, key)) {
+            var m = map[key];
+            var data = (cfg.ambientes && cfg.ambientes[key]) || cfg[key];
+            var elLink = document.getElementById(m.link);
+            var elName = document.getElementById(m.name);
+            var elBadge = document.getElementById(m.badge);
+            var elLabel = document.getElementById(m.label);
+
+            if (data && elLink) {
+              var url = (typeof data === 'string') ? data : data.url;
+              var nome = data.nome;
+              var ativo = (data.ativo !== false);
+
+              if (url) {
+                elLink.href = url;
+                elLink.target = '_blank';
+                elLink.rel = 'noopener noreferrer';
+              }
+
+              if (nome && elName) {
+                elName.textContent = nome;
+              }
+
+              if (!ativo) {
+                elLink.classList.add('disabled');
+                if (elLabel) elLabel.textContent = 'Indisponível no momento';
+                if (elBadge) {
+                  elBadge.textContent = 'Manutenção';
+                  elBadge.className = 'badge-status inactive';
+                }
+              } else {
+                elLink.classList.remove('disabled');
+                if (elLabel) elLabel.textContent = (m.type === 'oficial' ? 'Acessar Ambiente Oficial' : 'Acessar Homologação');
+                if (elBadge) {
+                  elBadge.textContent = (m.type === 'oficial' ? 'Oficial' : 'AUDIT');
+                  elBadge.className = 'badge-status ' + m.type;
+                }
+              }
+            }
           }
         }
+      }
+
+      // 1. Aplicação imediata do fallback estático
+      if (typeof SISFAR_CONFIG !== 'undefined') {
+        applyConfig(SISFAR_CONFIG);
+      } else if (typeof SISFAR_LINKS !== 'undefined') {
+        applyConfig(SISFAR_LINKS);
+      }
+
+      // 2. Busca assíncrona na nuvem
+      var api = (typeof SISFAR_CONFIG !== 'undefined' && SISFAR_CONFIG.apiEndpoint) ? SISFAR_CONFIG.apiEndpoint : null;
+      if (api) {
+        fetch(api + '?action=get')
+          .then(function (res) { return res.json(); })
+          .then(function (json) {
+            if (json.success && json.data) {
+              applyConfig({ ambientes: json.data });
+            }
+          })
+          .catch(function (err) {
+            console.warn('Aviso: executando com links em cache local/fallback.', err);
+          });
       }
     })();
   </script>
