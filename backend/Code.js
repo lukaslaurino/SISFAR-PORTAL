@@ -2,8 +2,8 @@
  * SISFAR — Backend Seguro de Configuração de Links do Portal (Google Apps Script)
  *
  * Arquitetura de Segurança:
- * 1. Leitura Pública (GET): Acesso anônimo permitido exclusivamente para leitura dos links pelo portal público.
- * 2. Operações de Escrita (POST/Server Functions): Estritamente restritas a administradores autenticados com Google Account em allowlist.
+ * 1. Leitura Pública (GET): Acesso anônimo permitido exclusivamente para leitura dos links pelo portal público (Zero mutações).
+ * 2. Operações Administrativas (POST / Server Functions): Estritamente restritas à autenticação via Conta Google (Session.getActiveUser().getEmail()) em allowlist explícita.
  * 3. Validação Fail-Closed: Validação estrita de schema dos 6 IDs canônicos, URLs HTTPS, tipos e integridade.
  */
 
@@ -67,16 +67,6 @@ function getAdminAllowlist() {
     return raw.split(",").map(function(e) { return e.trim().toLowerCase(); }).filter(Boolean);
   }
   return ["lukaslaurino@gmail.com", "lukaslaurinocppa@gmail.com"];
-}
-
-function getAdminToken() {
-  const props = PropertiesService.getScriptProperties();
-  let token = props.getProperty("ADMIN_API_TOKEN");
-  if (!token) {
-    token = "SISFAR_ADMIN_SECRET_" + Utilities.getUuid();
-    props.setProperty("ADMIN_API_TOKEN", token);
-  }
-  return token;
 }
 
 function isAuthorizedUser(email) {
@@ -177,11 +167,17 @@ function doGet(e) {
 }
 
 /**
- * Ponto de entrada POST (Rejeição Fail-Closed de chamadas anônimas)
+ * Ponto de entrada POST (Rejeição Fail-Closed de chamadas anônimas / não autorizadas)
  */
 function doPost(e) {
   const userEmail = Session.getActiveUser().getEmail();
-  let providedToken = "";
+
+  if (!isAuthorizedUser(userEmail)) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: "403 Não Autorizado: Operações de escrita exigem autenticação de administrador autorizada via Conta Google em allowlist."
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 
   try {
     let payload = null;
@@ -191,24 +187,7 @@ function doPost(e) {
       payload = JSON.parse(e.parameter.data);
     }
 
-    if (payload && payload._adminToken) {
-      providedToken = payload._adminToken;
-      delete payload._adminToken;
-    }
-
-    const serverToken = getAdminToken();
-    const isTokenValid = (providedToken && providedToken === serverToken);
-    const isGoogleUserValid = isAuthorizedUser(userEmail);
-
-    if (!isGoogleUserValid && !isTokenValid) {
-      return ContentService.createTextOutput(JSON.stringify({
-        success: false,
-        error: "403 Não Autorizado: Operações de escrita exigem autenticação de administrador autorizada."
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    const author = userEmail || "token_autorizado";
-    const result = saveConfigInternal(payload, author);
+    const result = saveConfigInternal(payload, userEmail);
     return ContentService.createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
