@@ -1046,6 +1046,294 @@
       .avail-grid { grid-template-columns: 1fr; }
     }
 
+    /* ==================== SUPORTE 2.2 ==================== */
+    .sup-subtabs {
+      display: inline-flex;
+      gap: 4px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      margin-bottom: 1.1rem;
+      flex-wrap: wrap;
+    }
+    .sup-subtab-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0.48rem 0.9rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+    .sup-subtab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .sup-subtab-btn.active { background: var(--accent-primary); color: #FFFFFF; }
+
+    .sup-subpanel { display: none; }
+    .sup-subpanel.active { display: block; }
+
+    .privacy-callout {
+      background: var(--audit-soft);
+      border: 1px solid var(--audit-border);
+      border-left: 3px solid var(--audit-color);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.15rem;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .sup-intent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1.15rem;
+    }
+    .sup-intent-card {
+      appearance: none;
+      text-align: left;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.9rem 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text-primary);
+      transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .sup-intent-card:hover {
+      border-color: var(--accent-primary);
+      background: var(--bg-hover);
+    }
+    .sup-intent-card.active {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-soft);
+      box-shadow: var(--shadow-xs);
+    }
+    .sup-intent-title {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.2rem;
+    }
+    .sup-intent-desc {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .sup-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+    .sup-form-grid .full-span { grid-column: 1 / -1; }
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .field-group > label:not(.sup-checkbox-row) {
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+    }
+    .field-group input,
+    .field-group select,
+    .field-group textarea {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.75rem;
+      font-family: inherit;
+      font-size: 13.5px;
+      width: 100%;
+    }
+    .field-group textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+    .field-group input:focus,
+    .field-group select:focus,
+    .field-group textarea:focus {
+      outline: 2px solid var(--accent-primary-soft);
+      border-color: var(--accent-primary);
+    }
+    .field-hint {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+
+    .btn-primary-solid {
+      appearance: none;
+      background: var(--accent-primary);
+      color: #FFFFFF;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0.62rem 1.15rem;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      transition: background-color var(--transition-fast);
+    }
+    .btn-primary-solid:hover:not(:disabled) { background: var(--accent-primary-hover); }
+    .btn-primary-solid:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .sup-feedback {
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      margin-top: 0.85rem;
+      display: none;
+    }
+    .sup-feedback.visible { display: block; }
+    .sup-feedback.error {
+      background: var(--danger-soft);
+      border: 1px solid var(--danger-border);
+      color: var(--danger-color);
+    }
+    .sup-feedback.success {
+      background: var(--oficial-soft);
+      border: 1px solid var(--oficial-border);
+      color: var(--oficial-color);
+    }
+
+    .sup-receipt-card {
+      background: var(--oficial-soft);
+      border: 1px solid var(--oficial-border);
+      border-radius: var(--radius-lg);
+      padding: 1.15rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .sup-receipt-card.visible { display: block; }
+    .sup-code-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.75rem;
+      margin-top: 0.45rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .sup-checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.9rem;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .sup-checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .sup-detail-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.15rem;
+      margin-top: 1rem;
+      display: none;
+    }
+    .sup-detail-card.visible { display: block; }
+    .sup-detail-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin: 0.9rem 0;
+    }
+    .sup-meta-cell {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.7rem;
+    }
+    .sup-meta-cell .k {
+      display: block;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+    .sup-meta-cell .v {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .sup-timeline-item {
+      border-left: 2px solid var(--border-strong);
+      padding: 0.35rem 0 0.55rem 0.85rem;
+      margin-left: 0.35rem;
+      font-size: 12.5px;
+    }
+    .sup-reply-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 0.9rem;
+      margin-bottom: 0.6rem;
+      font-size: 13px;
+    }
+    .sup-reply-box.is-admin { border-left: 3px solid var(--accent-primary); }
+    .sup-reply-box.is-user { border-left: 3px solid var(--accent-secondary); }
+
+    .sup-state-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .sup-state-RECEBIDO { background: var(--accent-secondary-soft); color: var(--accent-secondary); }
+    .sup-state-EM_ANALISE, .sup-state-AGUARDANDO_INFORMACOES { background: var(--audit-soft); color: var(--audit-color); }
+    .sup-state-EM_DESENVOLVIMENTO, .sup-state-EM_HOMOLOGACAO { background: var(--accent-primary-soft); color: var(--accent-primary); }
+    .sup-state-RESOLVIDO { background: var(--oficial-soft); color: var(--oficial-color); }
+    .sup-state-ENCERRADO { background: var(--neutral-soft); color: var(--neutral-text); }
+
+    @media (max-width: 900px) {
+      .sup-intent-grid { grid-template-columns: 1fr; }
+      .sup-detail-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .sup-form-grid, .sup-detail-meta { grid-template-columns: 1fr; }
+      .sup-form-grid .full-span { grid-column: auto; }
+    }
+
     footer {
       border-top: 1px solid var(--border-color);
       background: var(--bg-surface);
@@ -1075,7 +1363,7 @@
       .main-container { padding: 1rem 1rem 2rem; }
       .units-grid, .matrix-grid, .kpi-grid, .filters-bar { grid-template-columns: 1fr; }
       .nav-area { width: 100%; justify-content: space-between; }
-      .nav-tabs { width: 100%; overflow-x: auto; }
+      .nav-tabs { width: 100%; flex-wrap: wrap; }
     }
 
     @media (max-width: 420px) {
@@ -1132,6 +1420,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span>Comunicados</span>
             <span class="nav-count" id="navCountAnnouncements">0</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="suporte" role="tab" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Suporte</span>
           </button>
         </div>
 
@@ -1598,6 +1890,257 @@
         <div id="announcementsContainer"></div>
       </div>
     </section>
+
+    <!-- VIEW: SUPORTE -->
+    <section id="view-suporte" class="view-panel">
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Central de Suporte, Ocorrências e Sugestões
+          </h2>
+          <span class="section-note" id="supAccessStatusBadge">Acesso verificado por credencial de suporte ou sessão identificada</span>
+        </div>
+
+        <div class="privacy-callout" role="note">
+          <strong>Proteção de Dados Clínicos e Privacidade:</strong> Este canal é exclusivo para ocorrências técnicas, dúvidas operacionais e sugestões de melhoria. <strong>Não informe nome de paciente, CPF, INFOPEN, prontuário, prescrição individual ou dados clínicos identificáveis.</strong> Não envie anexos. Não há lista pública de chamados; acompanhe individualmente pelo protocolo e token fornecidos após o envio.
+        </div>
+
+        <div class="sup-subtabs" role="tablist" aria-label="Ações de suporte">
+          <button type="button" class="sup-subtab-btn active" data-sup-tab="novo">Novo Registro</button>
+          <button type="button" class="sup-subtab-btn" data-sup-tab="acompanhar">Acompanhar Chamado</button>
+        </div>
+
+        <!-- SUBPANEL: NOVO CHAMADO -->
+        <div id="sup-panel-novo" class="sup-subpanel active">
+          <div class="sup-intent-grid" role="group" aria-label="Tipo de solicitação">
+            <button type="button" class="sup-intent-card active" data-intent="problema">
+              <span class="sup-intent-title">Reportar Problema</span>
+              <span class="sup-intent-desc">Erro de sistema, lentidão ou falha de acesso em unidade oficial/audit.</span>
+            </button>
+            <button type="button" class="sup-intent-card" data-intent="sugestao">
+              <span class="sup-intent-title">Sugerir Melhoria</span>
+              <span class="sup-intent-desc">Ideia de fluxo, usabilidade, relatório ou recurso para o SISFAR.</span>
+            </button>
+            <button type="button" class="sup-intent-card" data-intent="suporte">
+              <span class="sup-intent-title">Solicitar Suporte</span>
+              <span class="sup-intent-desc">Dúvida operacional, dificuldade de utilização ou orientação técnica.</span>
+            </button>
+          </div>
+
+          <form id="supportCreateForm" novalidate>
+            <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+              <label for="supWebsite">Não preencher</label>
+              <input type="text" id="supWebsite" tabindex="-1" autocomplete="off">
+            </div>
+
+            <div class="sup-form-grid">
+              <div class="field-group">
+                <label for="supCategory">Categoria *</label>
+                <select id="supCategory" required>
+                  <option value="Erro de sistema">Erro de sistema</option>
+                  <option value="Lentidão">Lentidão</option>
+                  <option value="Dificuldade de utilização">Dificuldade de utilização</option>
+                  <option value="Solicitação de suporte">Solicitação de suporte</option>
+                  <option value="Sugestão de melhoria">Sugestão de melhoria</option>
+                  <option value="Problema de acesso">Problema de acesso</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label for="supUnit">Unidade *</label>
+                <select id="supUnit" required>
+                  <option value="CPPA">CPPA — Cadeia Pública de Porto Alegre</option>
+                  <option value="PEPOA">PEPOA — Penitenciária Estadual de Porto Alegre</option>
+                  <option value="MADRE">MADRE — Presídio Estadual Feminino Madre Pelletier</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label for="supEnv">Ambiente *</label>
+                <select id="supEnv" required>
+                  <option value="OFICIAL">OFICIAL (Produção)</option>
+                  <option value="AUDIT">AUDIT (Homologação)</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label for="supModule">Módulo *</label>
+                <select id="supModule" required>
+                  <option value="Login">Login</option>
+                  <option value="Dashboard">Dashboard</option>
+                  <option value="Pacientes">Pacientes</option>
+                  <option value="Prescrições">Prescrições</option>
+                  <option value="Dispensação">Dispensação</option>
+                  <option value="Consultas">Consultas</option>
+                  <option value="Relatórios">Relatórios</option>
+                  <option value="APAC" disabled>APAC (exclusivo PEPOA)</option>
+                  <option value="Portal">Portal</option>
+                  <option value="Outros">Outros</option>
+                </select>
+                <span class="field-hint" id="supApacHint">Módulo APAC habilitado exclusivamente quando a unidade selecionada for PEPOA.</span>
+              </div>
+
+              <div class="field-group full-span">
+                <span class="field-hint" id="supReleasePreview">Versão/deployment serão confirmados automaticamente no servidor a partir das releases registradas.</span>
+              </div>
+
+              <div class="field-group full-span">
+                <label for="supTitle">Título resumido *</label>
+                <input type="text" id="supTitle" maxlength="140" minlength="5" placeholder="Ex.: Erro ao gerar relatório consolidado de dispensação" required>
+              </div>
+
+              <div class="field-group full-span">
+                <label for="supDesc" id="supDescLabel">Descrição objetiva *</label>
+                <textarea id="supDesc" maxlength="2000" minlength="10" placeholder="Descreva o ocorrido ou solicitação sem dados individuais de pacientes..." required></textarea>
+              </div>
+
+              <div class="field-group" id="supGroupObserved">
+                <label for="supObserved">O que foi observado (opcional)</label>
+                <textarea id="supObserved" maxlength="800" style="min-height:70px;" placeholder="Mensagem exibida na tela, travamento ou comportamento observado"></textarea>
+              </div>
+
+              <div class="field-group" id="supGroupExpected">
+                <label for="supExpected" id="supExpectedLabel">Comportamento esperado (opcional)</label>
+                <textarea id="supExpected" maxlength="600" style="min-height:70px;" placeholder="O que era esperado acontecer normalmente"></textarea>
+              </div>
+
+              <div class="field-group" id="supGroupSteps">
+                <label for="supSteps">Passos para reproduzir (opcional)</label>
+                <textarea id="supSteps" maxlength="800" style="min-height:70px;" placeholder="1. Acessar módulo X... 2. Selecionar filtro Y..."></textarea>
+              </div>
+
+              <div class="field-group" id="supGroupImpact">
+                <label for="supImpact">Impacto informado</label>
+                <select id="supImpact">
+                  <option value="">Opcional / Não especificado</option>
+                  <option value="Baixo">Baixo (não impede a rotina)</option>
+                  <option value="Moderado">Moderado (há alternativa operacional)</option>
+                  <option value="Alto">Alto (prejudica fluxo principal)</option>
+                  <option value="Crítico">Crítico (impede atendimento/operação)</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label for="supReporterName">Identificação do solicitante *</label>
+                <input type="text" id="supReporterName" maxlength="80" placeholder="Nome completo ou identificação funcional (sem dados de paciente)" required>
+              </div>
+
+              <div class="field-group">
+                <label for="supReporterContact">Contato institucional (opcional)</label>
+                <input type="text" id="supReporterContact" maxlength="100" placeholder="E-mail institucional ou ramal da farmácia">
+              </div>
+
+              <div class="field-group full-span" id="supCredentialWrap">
+                <label for="supAccessCode">Credencial ou Convite de Suporte *</label>
+                <input type="password" id="supAccessCode" maxlength="120" autocomplete="off" placeholder="Informe a credencial institucional de suporte ou código de convite recebido">
+                <span class="field-hint" id="supCredentialHint">Envios anônimos irrestritos estão bloqueados. Utilize a credencial de suporte da unidade ou um convite válido.</span>
+              </div>
+
+              <div class="field-group full-span">
+                <label class="sup-checkbox-row" for="supPrivacyConfirm">
+                  <input type="checkbox" id="supPrivacyConfirm">
+                  <span>Confirmo que este registro <strong>não</strong> contém nome de paciente, CPF, INFOPEN, prontuário, prescrição individual ou dados clínicos sigilosos, e que não há anexos.</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+              <button type="button" id="btnResetSupportForm" class="btn-ghost">Limpar formulário</button>
+              <button type="submit" id="btnSubmitSupport" class="btn-primary-solid">Registrar Chamado</button>
+            </div>
+          </form>
+
+          <div id="supSubmitFeedback" class="sup-feedback" role="status" aria-live="polite"></div>
+
+          <div id="supReceiptCard" class="sup-receipt-card" role="region" aria-label="Comprovante de registro do chamado">
+            <h3 style="font-size:15px;font-weight:700;margin-bottom:0.35rem;">Chamado registrado com sucesso</h3>
+            <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:0.75rem;">
+              Guarde o <strong>Protocolo</strong> e o <strong>Token de Acompanhamento</strong> abaixo. Por privacidade, o token não é armazenado em texto claro e não poderá ser recuperado depois.
+            </p>
+            <div>
+              <strong style="font-size:12px;">Protocolo Público:</strong>
+              <div class="sup-code-box">
+                <span id="supReceiptProtocol">—</span>
+                <button type="button" id="btnCopyProtocol" class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:11.5px;">Copiar</button>
+              </div>
+            </div>
+            <div style="margin-top:0.65rem;">
+              <strong style="font-size:12px;">Token Individual de Acompanhamento:</strong>
+              <div class="sup-code-box">
+                <span id="supReceiptToken">—</span>
+                <button type="button" id="btnCopyToken" class="btn-ghost" style="padding:0.25rem 0.6rem;font-size:11.5px;">Copiar</button>
+              </div>
+            </div>
+            <div style="margin-top:0.9rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
+              <button type="button" id="btnTrackCreatedTicket" class="btn-primary-solid">Acompanhar este chamado →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBPANEL: ACOMPANHAR CHAMADO -->
+        <div id="sup-panel-acompanhar" class="sup-subpanel">
+          <form id="supportLookupForm" class="sup-form-grid" style="margin-bottom:0.85rem;" novalidate>
+            <div class="field-group">
+              <label for="supLookupProtocol">Protocolo *</label>
+              <input type="text" id="supLookupProtocol" maxlength="32" placeholder="Ex.: SUP-20261125-A1B2C3" required>
+            </div>
+            <div class="field-group">
+              <label for="supLookupToken">Token de Acompanhamento *</label>
+              <input type="password" id="supLookupToken" maxlength="80" autocomplete="off" placeholder="stk_..." required>
+            </div>
+            <div class="field-group full-span" style="display:flex;flex-direction:row;justify-content:flex-end;gap:0.6rem;">
+              <button type="submit" id="btnLookupTicket" class="btn-primary-solid">Consultar Chamado</button>
+            </div>
+          </form>
+
+          <div id="supLookupFeedback" class="sup-feedback" role="status" aria-live="polite"></div>
+
+          <div id="supTicketDetail" class="sup-detail-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.75rem;flex-wrap:wrap;">
+              <div>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                  <code id="supDetProtocol" style="font-size:13px;font-weight:700;">—</code>
+                  <span id="supDetState" class="sup-state-pill">—</span>
+                  <span id="supDetPriority" class="tag-pill tag-pendente">—</span>
+                </div>
+                <h3 id="supDetTitle" style="font-size:16px;font-weight:700;margin-top:0.4rem;">—</h3>
+              </div>
+              <button type="button" id="btnRefreshTrackedTicket" class="btn-ghost" style="font-size:12px;">↻ Atualizar status</button>
+            </div>
+
+            <div class="sup-detail-meta" id="supDetMetaGrid"></div>
+
+            <div style="margin-bottom:0.9rem;">
+              <strong style="font-size:12px;text-transform:uppercase;color:var(--text-secondary);">Descrição</strong>
+              <p id="supDetDesc" style="margin-top:0.25rem;white-space:pre-line;font-size:13.5px;"></p>
+            </div>
+
+            <div id="supDetConditionalWrap" style="margin-bottom:0.9rem;"></div>
+            <div id="supDetLinksWrap" style="margin-bottom:0.9rem;"></div>
+
+            <div style="margin-bottom:1rem;">
+              <strong style="font-size:12px;text-transform:uppercase;color:var(--text-secondary);display:block;margin-bottom:0.45rem;">Respostas Públicas</strong>
+              <div id="supTrackedReplies"></div>
+            </div>
+
+            <div id="supPublicReplyBox" style="margin-bottom:1rem;padding-top:0.75rem;border-top:1px solid var(--border-color);">
+              <label for="supPublicReplyMsg" style="font-size:11.5px;font-weight:600;text-transform:uppercase;color:var(--text-secondary);display:block;margin-bottom:0.35rem;">Enviar Informação Complementar (Pública · Sem Dados de Pacientes)</label>
+              <textarea id="supPublicReplyMsg" maxlength="600" style="width:100%;min-height:68px;background:var(--bg-surface);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm);padding:0.5rem 0.7rem;font-family:inherit;font-size:13px;" placeholder="Adicione esclarecimentos técnicos sem dados identificáveis de pacientes..."></textarea>
+              <div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">
+                <button type="button" id="btnSendPublicReply" class="btn-primary-solid" style="padding:0.45rem 0.9rem;font-size:12.5px;">Enviar Complemento</button>
+              </div>
+            </div>
+
+            <div>
+              <strong style="font-size:12px;text-transform:uppercase;color:var(--text-secondary);display:block;margin-bottom:0.45rem;">Histórico de Acompanhamento</strong>
+              <div id="supTrackedTimeline"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -1627,7 +2170,11 @@
         releaseHistory: [],
         announcements: [],
         settings: {},
-        monitoring: null
+        monitoring: null,
+        supportConfig: null,
+        clientRequestId: 'sup-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10),
+        lastTrackedLookup: null,
+        lastRefreshClickAt: 0
       };
 
       var STATUS_META = {
@@ -2567,9 +3114,222 @@
         if (Array.isArray(payload.announcements)) state.announcements = payload.announcements;
         if (payload.settings) applySettings(payload.settings);
         if (payload.monitoring) state.monitoring = payload.monitoring;
+        if (payload.supportConfig) {
+          state.supportConfig = payload.supportConfig;
+          applySupportConfigUI();
+        }
         applyReleaseTelemetry();
         renderAnnouncements();
         applyMonitoringTelemetry();
+        updateSupportReleasePreview();
+      }
+
+      function applySupportConfigUI() {
+        var cfg = state.supportConfig;
+        if (!cfg) return;
+        var badge = document.getElementById('supAccessStatusBadge');
+        var credWrap = document.getElementById('supCredentialWrap');
+        var credHint = document.getElementById('supCredentialHint');
+        if (cfg.googleEmailDetected && cfg.allowGoogleSession !== false) {
+          if (badge) badge.textContent = 'Sessão Google identificada: ' + cfg.googleEmail;
+          if (credWrap) credWrap.style.display = 'none';
+        } else if (!cfg.accessReady) {
+          if (badge) badge.textContent = 'Envios bloqueados até configuração de credencial/convite pelo administrador';
+          if (credWrap) credWrap.style.display = 'flex';
+          if (credHint) credHint.textContent = 'Nenhuma credencial ou convite de suporte configurado no servidor. Solicite ao administrador do portal.';
+        } else {
+          if (badge) badge.textContent = 'Acesso protegido por Credencial / Convite de Suporte';
+          if (credWrap) credWrap.style.display = 'flex';
+          if (credHint) credHint.textContent = 'Informe a credencial de suporte da unidade ou um convite válido. Envios anônimos irrestritos são rejeitados.';
+        }
+      }
+
+      function syncSupportModuleRules() {
+        var unitEl = document.getElementById('supUnit');
+        var modEl = document.getElementById('supModule');
+        var hintEl = document.getElementById('supApacHint');
+        if (!unitEl || !modEl) return;
+        var isPepoa = unitEl.value === 'PEPOA';
+        var opts = modEl.options || [];
+        for (var i = 0; i < opts.length; i++) {
+          if (opts[i].value === 'APAC') {
+            opts[i].disabled = !isPepoa;
+            opts[i].text = isPepoa ? 'APAC (exclusivo PEPOA)' : 'APAC (disponível apenas para PEPOA)';
+          }
+        }
+        if (!isPepoa && modEl.value === 'APAC') {
+          modEl.value = 'Outros';
+        }
+        if (hintEl) {
+          hintEl.textContent = isPepoa
+            ? 'Unidade PEPOA selecionada: módulo APAC habilitado.'
+            : 'Módulo APAC desabilitado para ' + unitEl.value + ' (pertinente apenas à unidade PEPOA).';
+        }
+      }
+
+      function updateSupportReleasePreview() {
+        var unitEl = document.getElementById('supUnit');
+        var envEl = document.getElementById('supEnv');
+        var prevEl = document.getElementById('supReleasePreview');
+        if (!unitEl || !envEl || !prevEl) return;
+        var key = unitEl.value.toLowerCase() + (envEl.value === 'OFICIAL' ? 'Oficial' : 'Audit');
+        var rel = state.releaseState && state.releaseState.environments ? state.releaseState.environments[key] : null;
+        if (rel && rel.versao) {
+          prevEl.textContent = 'Versão/deployment confirmados para ' + unitEl.value + ' ' + envEl.value + ': v' + rel.versao + ' (@' + String(rel.deploymentVersion || '').replace(/^@/, '') + ' · ' + String(rel.commit || '').slice(0, 7) + ')';
+        } else {
+          prevEl.textContent = 'Sem release registrada para ' + unitEl.value + ' ' + envEl.value + ' (o chamado registrará contexto do Portal 2.2.0).';
+        }
+      }
+
+      function syncSupportConditionalFields() {
+        var catEl = document.getElementById('supCategory');
+        if (!catEl) return;
+        var cat = catEl.value;
+        var grpObs = document.getElementById('supGroupObserved');
+        var grpExp = document.getElementById('supGroupExpected');
+        var grpSteps = document.getElementById('supGroupSteps');
+        var expLabel = document.getElementById('supExpectedLabel');
+        var descLabel = document.getElementById('supDescLabel');
+
+        var isSuggestion = cat === 'Sugestão de melhoria';
+        var isBug = cat === 'Erro de sistema' || cat === 'Lentidão' || cat === 'Problema de acesso';
+
+        if (grpObs) grpObs.style.display = isSuggestion ? 'none' : 'flex';
+        if (grpSteps) grpSteps.style.display = isBug ? 'flex' : 'none';
+        if (grpExp) grpExp.style.display = 'flex';
+        if (expLabel) expLabel.textContent = isSuggestion ? 'Benefício / Melhoria esperada (opcional)' : 'Comportamento esperado (opcional)';
+        if (descLabel) descLabel.textContent = isSuggestion ? 'Descrição da melhoria proposta *' : 'Descrição objetiva *';
+      }
+
+      function switchSupportSubtab(tabName) {
+        var btns = document.querySelectorAll ? document.querySelectorAll('.sup-subtab-btn[data-sup-tab]') : [];
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle('active', btns[i].getAttribute('data-sup-tab') === tabName);
+        }
+        var panels = document.querySelectorAll ? document.querySelectorAll('.sup-subpanel') : [];
+        for (var j = 0; j < panels.length; j++) {
+          panels[j].classList.toggle('active', panels[j].id === 'sup-panel-' + tabName);
+        }
+      }
+
+      function showSupportFeedback(elId, msg, type) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        if (!msg) {
+          el.className = 'sup-feedback';
+          el.textContent = '';
+          return;
+        }
+        el.textContent = msg;
+        el.className = 'sup-feedback visible ' + (type || 'error');
+      }
+
+      function renderTrackedTicket(ticket) {
+        var card = document.getElementById('supTicketDetail');
+        if (!card || !ticket) return;
+        card.classList.add('visible');
+        setText('supDetProtocol', ticket.protocolo);
+        var stEl = document.getElementById('supDetState');
+        if (stEl) {
+          stEl.textContent = ticket.estado;
+          stEl.className = 'sup-state-pill sup-state-' + String(ticket.estado || 'RECEBIDO');
+        }
+        setText('supDetPriority', 'Prioridade: ' + (ticket.prioridade || 'normal'));
+        setText('supDetTitle', ticket.titulo);
+        setText('supDetDesc', ticket.descricao);
+
+        var ctx = ticket.versaoContexto || {};
+        var verStr = ctx.confirmadaPorRelease && ctx.versao
+          ? ('v' + ctx.versao + (ctx.deploymentVersion ? ' (@' + String(ctx.deploymentVersion).replace(/^@/, '') + ')' : ''))
+          : 'Sem release confirmada';
+
+        var metaEl = document.getElementById('supDetMetaGrid');
+        if (metaEl) {
+          metaEl.innerHTML =
+            '<div class="sup-meta-cell"><span class="k">Categoria</span><span class="v">' + escapeHtml(ticket.categoria) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Unidade / Ambiente</span><span class="v">' + escapeHtml(ticket.unidade + ' · ' + ticket.ambiente) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Módulo</span><span class="v">' + escapeHtml(ticket.modulo) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Versão Confirmada</span><span class="v">' + escapeHtml(verStr) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Criado em</span><span class="v">' + escapeHtml(formatPtBrDateTime(ticket.criadoEm)) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Atualizado em</span><span class="v">' + escapeHtml(formatPtBrDateTime(ticket.atualizadoEm)) + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Impacto Informado</span><span class="v">' + escapeHtml(ticket.impactoInformado || 'Não especificado') + '</span></div>' +
+            '<div class="sup-meta-cell"><span class="k">Encerramento / Resolução</span><span class="v">' + escapeHtml(ticket.encerradoEm ? formatPtBrDateTime(ticket.encerradoEm) : (ticket.resolvidoEm ? formatPtBrDateTime(ticket.resolvidoEm) : 'Em aberto')) + '</span></div>';
+        }
+
+        var condEl = document.getElementById('supDetConditionalWrap');
+        if (condEl) {
+          var condHtml = '';
+          if (ticket.observado) condHtml += '<p style="font-size:12.5px;margin-bottom:0.35rem;"><strong>Observado:</strong> ' + escapeHtml(ticket.observado) + '</p>';
+          if (ticket.esperado) condHtml += '<p style="font-size:12.5px;margin-bottom:0.35rem;"><strong>Esperado:</strong> ' + escapeHtml(ticket.esperado) + '</p>';
+          if (ticket.passosReproduzir) condHtml += '<p style="font-size:12.5px;margin-bottom:0.35rem;"><strong>Passos:</strong> ' + escapeHtml(ticket.passosReproduzir) + '</p>';
+          condEl.innerHTML = condHtml;
+        }
+
+        var linksEl = document.getElementById('supDetLinksWrap');
+        if (linksEl) {
+          var lr = ticket.linksRelacionados || {};
+          var lParts = [];
+          if (lr.releaseVersao) lParts.push('Release vinculada: v' + lr.releaseVersao);
+          if (lr.commit) lParts.push('Commit: ' + lr.commit);
+          if (lr.duplicadoDe) lParts.push('Vinculado a: ' + lr.duplicadoDe);
+          linksEl.innerHTML = lParts.length > 0
+            ? '<div style="font-size:12px;color:var(--text-secondary);"><strong>Vínculos:</strong> ' + escapeHtml(lParts.join(' · ')) + '</div>'
+            : '';
+        }
+
+        var repEl = document.getElementById('supTrackedReplies');
+        if (repEl) {
+          var reps = Array.isArray(ticket.respostasPublicas) ? ticket.respostasPublicas : [];
+          if (reps.length === 0) {
+            repEl.innerHTML = '<p class="muted" style="font-size:12.5px;">Nenhuma resposta pública registrada até o momento.</p>';
+          } else {
+            repEl.innerHTML = reps.map(function (r) {
+              var isUser = r.origem === 'solicitante';
+              return '<div class="sup-reply-box ' + (isUser ? 'is-user' : 'is-admin') + '">' +
+                '<div style="display:flex;justify-content:space-between;gap:0.5rem;font-size:11.5px;color:var(--text-secondary);margin-bottom:0.25rem;">' +
+                  '<strong>' + escapeHtml(r.autor || 'Equipe de Suporte') + '</strong>' +
+                  '<span>' + escapeHtml(formatPtBrDateTime(r.criadoEm)) + '</span>' +
+                '</div>' +
+                '<div style="white-space:pre-line;">' + escapeHtml(r.mensagem) + '</div>' +
+              '</div>';
+            }).join('');
+          }
+        }
+
+        var replyBox = document.getElementById('supPublicReplyBox');
+        if (replyBox) {
+          replyBox.style.display = ticket.estado === 'ENCERRADO' ? 'none' : 'block';
+        }
+
+        var tlEl = document.getElementById('supTrackedTimeline');
+        if (tlEl) {
+          var hist = Array.isArray(ticket.historicoPublico) ? ticket.historicoPublico : [];
+          if (hist.length === 0) {
+            tlEl.innerHTML = '<p class="muted" style="font-size:12.5px;">Sem eventos registrados.</p>';
+          } else {
+            tlEl.innerHTML = hist.map(function (h) {
+              return '<div class="sup-timeline-item">' +
+                '<div style="font-size:11.5px;color:var(--text-secondary);">' + escapeHtml(formatPtBrDateTime(h.criadoEm)) + '</div>' +
+                '<div>' + escapeHtml(h.detalhe || h.tipo) + '</div>' +
+              '</div>';
+            }).join('');
+          }
+        }
+      }
+
+      function callGasRpc(fnName, args, onOk, onErr) {
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          if (onErr) onErr(new Error('Comunicação com o servidor Apps Script indisponível neste modo.'));
+          return;
+        }
+        try {
+          var runner = google.script.run
+            .withSuccessHandler(function (res) { if (onOk) onOk(res); })
+            .withFailureHandler(function (err) { if (onErr) onErr(err || new Error('Erro no servidor.')); });
+          runner[fnName].apply(runner, args || []);
+        } catch (e) {
+          if (onErr) onErr(e);
+        }
       }
 
       function switchView(viewName) {
@@ -2677,12 +3437,217 @@
             switchView('status');
           });
         }
+
+        // Suporte 2.2 interactions
+        var supSubBtns = document.querySelectorAll ? document.querySelectorAll('.sup-subtab-btn[data-sup-tab]') : [];
+        for (var st = 0; st < supSubBtns.length; st++) {
+          supSubBtns[st].addEventListener('click', function () {
+            switchSupportSubtab(this.getAttribute('data-sup-tab'));
+          });
+        }
+
+        var intentBtns = document.querySelectorAll ? document.querySelectorAll('.sup-intent-card[data-intent]') : [];
+        for (var it = 0; it < intentBtns.length; it++) {
+          intentBtns[it].addEventListener('click', function () {
+            var intent = this.getAttribute('data-intent');
+            for (var x = 0; x < intentBtns.length; x++) {
+              intentBtns[x].classList.toggle('active', intentBtns[x] === this);
+            }
+            var catSel = document.getElementById('supCategory');
+            if (catSel) {
+              if (intent === 'sugestao') catSel.value = 'Sugestão de melhoria';
+              else if (intent === 'suporte') catSel.value = 'Solicitação de suporte';
+              else catSel.value = 'Erro de sistema';
+              syncSupportConditionalFields();
+            }
+          });
+        }
+
+        var supUnitEl = document.getElementById('supUnit');
+        var supEnvEl = document.getElementById('supEnv');
+        var supCatEl = document.getElementById('supCategory');
+        if (supUnitEl && supUnitEl.addEventListener) {
+          supUnitEl.addEventListener('change', function () {
+            syncSupportModuleRules();
+            updateSupportReleasePreview();
+          });
+        }
+        if (supEnvEl && supEnvEl.addEventListener) {
+          supEnvEl.addEventListener('change', updateSupportReleasePreview);
+        }
+        if (supCatEl && supCatEl.addEventListener) {
+          supCatEl.addEventListener('change', syncSupportConditionalFields);
+        }
+        syncSupportModuleRules();
+        syncSupportConditionalFields();
+
+        var resetSupBtn = document.getElementById('btnResetSupportForm');
+        if (resetSupBtn && resetSupBtn.addEventListener) {
+          resetSupBtn.addEventListener('click', function () {
+            var form = document.getElementById('supportCreateForm');
+            if (form && form.reset) form.reset();
+            state.clientRequestId = 'sup-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+            syncSupportModuleRules();
+            syncSupportConditionalFields();
+            updateSupportReleasePreview();
+            showSupportFeedback('supSubmitFeedback', '');
+          });
+        }
+
+        var createForm = document.getElementById('supportCreateForm');
+        if (createForm && createForm.addEventListener) {
+          createForm.addEventListener('submit', function (ev) {
+            if (ev && ev.preventDefault) ev.preventDefault();
+            showSupportFeedback('supSubmitFeedback', '');
+            var btn = document.getElementById('btnSubmitSupport');
+            var payload = {
+              categoria: (document.getElementById('supCategory') || {}).value || '',
+              unidade: (document.getElementById('supUnit') || {}).value || '',
+              ambiente: (document.getElementById('supEnv') || {}).value || '',
+              modulo: (document.getElementById('supModule') || {}).value || '',
+              titulo: ((document.getElementById('supTitle') || {}).value || '').trim(),
+              descricao: ((document.getElementById('supDesc') || {}).value || '').trim(),
+              observado: ((document.getElementById('supObserved') || {}).value || '').trim(),
+              esperado: ((document.getElementById('supExpected') || {}).value || '').trim(),
+              passosReproduzir: ((document.getElementById('supSteps') || {}).value || '').trim(),
+              impactoInformado: (document.getElementById('supImpact') || {}).value || '',
+              solicitanteNome: ((document.getElementById('supReporterName') || {}).value || '').trim(),
+              solicitanteContato: ((document.getElementById('supReporterContact') || {}).value || '').trim(),
+              supportCode: ((document.getElementById('supAccessCode') || {}).value || '').trim(),
+              confirmacaoSemDadosClinicos: Boolean((document.getElementById('supPrivacyConfirm') || {}).checked),
+              website: ((document.getElementById('supWebsite') || {}).value || '').trim(),
+              clientRequestId: state.clientRequestId
+            };
+            if (btn) btn.disabled = true;
+            callGasRpc('apiCreateSupportTicket', [payload], function (res) {
+              if (btn) btn.disabled = false;
+              if (!res || !res.success) {
+                showSupportFeedback('supSubmitFeedback', (res && res.error) || 'Não foi possível registrar o chamado.', 'error');
+                return;
+              }
+              showSupportFeedback('supSubmitFeedback', res.message || 'Chamado registrado.', 'success');
+              var recCard = document.getElementById('supReceiptCard');
+              if (recCard) recCard.classList.add('visible');
+              setText('supReceiptProtocol', res.protocolo || '—');
+              setText('supReceiptToken', res.trackingToken || '(token já emitido anteriormente)');
+              if (document.getElementById('supLookupProtocol')) document.getElementById('supLookupProtocol').value = res.protocolo || '';
+              if (document.getElementById('supLookupToken') && res.trackingToken) document.getElementById('supLookupToken').value = res.trackingToken;
+              state.clientRequestId = 'sup-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+              if (createForm.reset) createForm.reset();
+              syncSupportModuleRules();
+              syncSupportConditionalFields();
+              updateSupportReleasePreview();
+            }, function (err) {
+              if (btn) btn.disabled = false;
+              showSupportFeedback('supSubmitFeedback', (err && err.message) || String(err), 'error');
+            });
+          });
+        }
+
+        function copyTextFromEl(elId) {
+          var txt = (document.getElementById(elId) || {}).textContent || '';
+          if (txt && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).catch(function () {});
+          }
+        }
+        var copyProtoBtn = document.getElementById('btnCopyProtocol');
+        if (copyProtoBtn && copyProtoBtn.addEventListener) {
+          copyProtoBtn.addEventListener('click', function () { copyTextFromEl('supReceiptProtocol'); });
+        }
+        var copyTokBtn = document.getElementById('btnCopyToken');
+        if (copyTokBtn && copyTokBtn.addEventListener) {
+          copyTokBtn.addEventListener('click', function () { copyTextFromEl('supReceiptToken'); });
+        }
+
+        function executeLookup(protocolo, token) {
+          showSupportFeedback('supLookupFeedback', '');
+          var btn = document.getElementById('btnLookupTicket');
+          if (btn) btn.disabled = true;
+          callGasRpc('apiLookupSupportTicket', [protocolo, token], function (res) {
+            if (btn) btn.disabled = false;
+            if (!res || !res.success || !res.ticket) {
+              showSupportFeedback('supLookupFeedback', (res && res.error) || 'Chamado não encontrado ou token inválido.', 'error');
+              return;
+            }
+            state.lastTrackedLookup = { protocolo: protocolo, token: token };
+            renderTrackedTicket(res.ticket);
+          }, function (err) {
+            if (btn) btn.disabled = false;
+            var det = document.getElementById('supTicketDetail');
+            if (det) det.classList.remove('visible');
+            showSupportFeedback('supLookupFeedback', (err && err.message) || String(err), 'error');
+          });
+        }
+
+        var trackCreatedBtn = document.getElementById('btnTrackCreatedTicket');
+        if (trackCreatedBtn && trackCreatedBtn.addEventListener) {
+          trackCreatedBtn.addEventListener('click', function () {
+            var p = (document.getElementById('supLookupProtocol') || {}).value || '';
+            var t = (document.getElementById('supLookupToken') || {}).value || '';
+            switchSupportSubtab('acompanhar');
+            if (p && t) executeLookup(p, t);
+          });
+        }
+
+        var lookupForm = document.getElementById('supportLookupForm');
+        if (lookupForm && lookupForm.addEventListener) {
+          lookupForm.addEventListener('submit', function (ev) {
+            if (ev && ev.preventDefault) ev.preventDefault();
+            var p = ((document.getElementById('supLookupProtocol') || {}).value || '').trim();
+            var t = ((document.getElementById('supLookupToken') || {}).value || '').trim();
+            executeLookup(p, t);
+          });
+        }
+
+        var refreshBtn = document.getElementById('btnRefreshTrackedTicket');
+        if (refreshBtn && refreshBtn.addEventListener) {
+          refreshBtn.addEventListener('click', function () {
+            if (!state.lastTrackedLookup) return;
+            var now = Date.now();
+            if (now - state.lastRefreshClickAt < 5000) {
+              showSupportFeedback('supLookupFeedback', 'Aguarde alguns segundos antes de atualizar novamente.', 'error');
+              return;
+            }
+            state.lastRefreshClickAt = now;
+            executeLookup(state.lastTrackedLookup.protocolo, state.lastTrackedLookup.token);
+          });
+        }
+
+        var sendReplyBtn = document.getElementById('btnSendPublicReply');
+        if (sendReplyBtn && sendReplyBtn.addEventListener) {
+          sendReplyBtn.addEventListener('click', function () {
+            if (!state.lastTrackedLookup) return;
+            var msgEl = document.getElementById('supPublicReplyMsg');
+            var msg = msgEl ? msgEl.value.trim() : '';
+            if (!msg) {
+              showSupportFeedback('supLookupFeedback', 'Digite uma mensagem complementar antes de enviar.', 'error');
+              return;
+            }
+            sendReplyBtn.disabled = true;
+            callGasRpc('apiAddPublicSupportReply', [state.lastTrackedLookup.protocolo, state.lastTrackedLookup.token, msg], function (res) {
+              sendReplyBtn.disabled = false;
+              if (res && res.success && res.ticket) {
+                if (msgEl) msgEl.value = '';
+                showSupportFeedback('supLookupFeedback', res.message || 'Complemento enviado.', 'success');
+                renderTrackedTicket(res.ticket);
+              } else {
+                showSupportFeedback('supLookupFeedback', (res && res.error) || 'Erro ao enviar complemento.', 'error');
+              }
+            }, function (err) {
+              sendReplyBtn.disabled = false;
+              showSupportFeedback('supLookupFeedback', (err && err.message) || String(err), 'error');
+            });
+          });
+        }
       }
 
       if (INITIAL_PORTAL_DATA) {
         applyBootstrap(INITIAL_PORTAL_DATA);
       }
       setupInteractions();
+      if (INITIAL_PORTAL_DATA && INITIAL_PORTAL_DATA.initialView) {
+        switchView(INITIAL_PORTAL_DATA.initialView);
+      }
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         try {

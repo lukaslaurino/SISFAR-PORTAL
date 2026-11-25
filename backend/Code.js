@@ -113,7 +113,61 @@ const PROP_KEYS = {
   MONITOR_HISTORY: "MONITOR_HISTORY",
   MONITOR_HISTORY_SEG_PREFIX: "MONITOR_HISTORY_SEG_",
   MONITOR_INCIDENTS: "MONITOR_INCIDENTS",
-  MONITOR_MAINTENANCES: "MONITOR_MAINTENANCES"
+  MONITOR_MAINTENANCES: "MONITOR_MAINTENANCES",
+  SUPPORT_SETTINGS: "SUPPORT_SETTINGS",
+  SUPPORT_AUTH_HASH: "SUPPORT_AUTH_HASH",
+  SUPPORT_AUTH_SALT: "SUPPORT_AUTH_SALT",
+  SUPPORT_INVITES: "SUPPORT_INVITES",
+  SUPPORT_INDEX: "SUPPORT_INDEX",
+  SUPPORT_DEDUPE: "SUPPORT_DEDUPE",
+  SUPPORT_SEG_PREFIX: "SUPPORT_SEG_",
+  SUPPORT_ARCH_PREFIX: "SUPPORT_ARCH_"
+};
+
+const PORTAL_VERSION = "2.2.0";
+const VALID_SUPPORT_CATEGORIES = [
+  "Erro de sistema",
+  "Lentidão",
+  "Dificuldade de utilização",
+  "Solicitação de suporte",
+  "Sugestão de melhoria",
+  "Problema de acesso",
+  "Outros"
+];
+const VALID_SUPPORT_MODULES = [
+  "Login",
+  "Dashboard",
+  "Pacientes",
+  "Prescrições",
+  "Dispensação",
+  "Consultas",
+  "Relatórios",
+  "APAC",
+  "Portal",
+  "Outros"
+];
+const VALID_SUPPORT_IMPACTS = ["Baixo", "Moderado", "Alto", "Crítico"];
+const VALID_SUPPORT_STATES = [
+  "RECEBIDO",
+  "EM_ANALISE",
+  "AGUARDANDO_INFORMACOES",
+  "EM_DESENVOLVIMENTO",
+  "EM_HOMOLOGACAO",
+  "RESOLVIDO",
+  "ENCERRADO"
+];
+const VALID_SUPPORT_PRIORITIES = ["baixa", "normal", "alta", "crítica"];
+
+const DEFAULT_SUPPORT_SETTINGS = {
+  schemaVersion: "2.2",
+  enabled: true,
+  allowGoogleSession: true,
+  retentionDaysClosed: 90,
+  archiveRetentionDays: 180,
+  autoArchiveOnCloseDays: 30,
+  maxActiveSegments: 10,
+  maxArchiveSegments: 6,
+  maxTicketsPerSegment: 5
 };
 
 const VALID_MONITOR_INTERVALS = [5, 10, 15, 30, 60];
@@ -2718,6 +2772,1734 @@ function updateMonitoringMaintenanceStatusInternal_(id, nextEstado, author) {
   });
 }
 
+/* ==================== CENTRAL DE SUPORTE, OCORRÊNCIAS E SUGESTÕES (2.2) ==================== */
+
+function sanitizeSupportText_(str, maxLen, allowNewlines) {
+  if (str === null || str === undefined) return "";
+  var s = String(str)
+    .replace(/\u0000/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  s = s
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<(iframe|object|embed|svg|style|link|meta|form|base)\b[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<\/?[a-z][a-z0-9-]*(\s[^>]*)?>/gi, " ")
+    .replace(/\bon\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, " ")
+    .replace(/(?:javascript|vbscript)\s*:/gi, "")
+    .replace(/data\s*:\s*text\/html/gi, "");
+  if (allowNewlines) {
+    s = s.replace(/[^\S\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  } else {
+    s = s.replace(/\s+/g, " ").trim();
+  }
+  if (maxLen && s.length > maxLen) {
+    s = s.slice(0, maxLen).trim();
+  }
+  return s;
+}
+
+function getSupportSettings_() {
+  var base = cloneJson_(DEFAULT_SUPPORT_SETTINGS);
+  try {
+    var raw = getProps_().getProperty(PROP_KEYS.SUPPORT_SETTINGS);
+    if (!raw) return base;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return base;
+    if (typeof parsed.enabled === "boolean") base.enabled = parsed.enabled;
+    if (typeof parsed.allowGoogleSession === "boolean") base.allowGoogleSession = parsed.allowGoogleSession;
+    if (typeof parsed.retentionDaysClosed === "number" && !isNaN(parsed.retentionDaysClosed)) {
+      base.retentionDaysClosed = Math.max(7, Math.min(365, Math.floor(parsed.retentionDaysClosed)));
+    }
+    if (typeof parsed.archiveRetentionDays === "number" && !isNaN(parsed.archiveRetentionDays)) {
+      base.archiveRetentionDays = Math.max(30, Math.min(730, Math.floor(parsed.archiveRetentionDays)));
+    }
+    if (typeof parsed.autoArchiveOnCloseDays === "number" && !isNaN(parsed.autoArchiveOnCloseDays)) {
+      base.autoArchiveOnCloseDays = Math.max(0, Math.min(180, Math.floor(parsed.autoArchiveOnCloseDays)));
+    }
+    if (typeof parsed.maxActiveSegments === "number" && !isNaN(parsed.maxActiveSegments)) {
+      base.maxActiveSegments = Math.max(2, Math.min(16, Math.floor(parsed.maxActiveSegments)));
+    }
+    if (typeof parsed.maxArchiveSegments === "number" && !isNaN(parsed.maxArchiveSegments)) {
+      base.maxArchiveSegments = Math.max(0, Math.min(10, Math.floor(parsed.maxArchiveSegments)));
+    }
+    if (typeof parsed.maxTicketsPerSegment === "number" && !isNaN(parsed.maxTicketsPerSegment)) {
+      base.maxTicketsPerSegment = Math.max(2, Math.min(8, Math.floor(parsed.maxTicketsPerSegment)));
+    }
+    if (parsed.atualizadoEm) base.atualizadoEm = String(parsed.atualizadoEm);
+    if (parsed.atualizadoPor) base.atualizadoPor = String(parsed.atualizadoPor);
+  } catch (e) {}
+  return base;
+}
+
+function isSupportCredentialConfigured_() {
+  var props = getProps_();
+  var hash = props.getProperty(PROP_KEYS.SUPPORT_AUTH_HASH);
+  var salt = props.getProperty(PROP_KEYS.SUPPORT_AUTH_SALT);
+  return Boolean(hash && salt);
+}
+
+function getSupportInvitesRaw_() {
+  try {
+    var raw = getProps_().getProperty(PROP_KEYS.SUPPORT_INVITES);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function persistSupportInvitesLocked_(props, list) {
+  var items = (list || []).slice(0, 30);
+  while (items.length > 1 && getUtf8ByteLength_(JSON.stringify(items)) > MAX_PROPERTY_BYTES) {
+    items.pop();
+  }
+  props.setProperty(PROP_KEYS.SUPPORT_INVITES, JSON.stringify(items));
+  return items;
+}
+
+function getActiveSupportInvitesCount_() {
+  var nowMs = Date.now();
+  return getSupportInvitesRaw_().filter(function (inv) {
+    if (!inv || inv.ativo !== true) return false;
+    if (inv.expiraEm && Date.parse(inv.expiraEm) <= nowMs) return false;
+    if (Number(inv.usos || 0) >= Number(inv.maxUsos || 1)) return false;
+    return true;
+  }).length;
+}
+
+function isSupportAccessMethodAvailable_() {
+  var settings = getSupportSettings_();
+  if (!settings.enabled) return false;
+  if (settings.allowGoogleSession && getActiveGoogleEmail_()) return true;
+  if (isSupportCredentialConfigured_()) return true;
+  if (getActiveSupportInvitesCount_() > 0) return true;
+  return false;
+}
+
+function setSupportCredentialInternal_(rawCred) {
+  var clean = String(rawCred || "").trim();
+  if (clean.length < 8) {
+    throw new Error("A credencial de suporte deve ter pelo menos 8 caracteres.");
+  }
+  var props = getProps_();
+  var webhookSecret = props.getProperty(PROP_KEYS.WEBHOOK_SECRET) || "";
+  if (webhookSecret && constantTimeEqual_(clean, webhookSecret)) {
+    throw new Error("A credencial de suporte deve ser distinta do segredo HMAC.");
+  }
+  var adminSalt = props.getProperty(PROP_KEYS.ADMIN_AUTH_SALT) || "";
+  var adminHash = props.getProperty(PROP_KEYS.ADMIN_AUTH_HASH) || "";
+  if (adminSalt && adminHash && constantTimeEqual_(sha256Hex_(adminSalt + ":" + clean), adminHash)) {
+    throw new Error("A credencial de suporte deve ser distinta da chave administrativa.");
+  }
+  var salt = Utilities.getUuid ? Utilities.getUuid() : (String(Date.now()) + "-" + String(Math.random()));
+  var hash = sha256Hex_(salt + ":" + clean);
+  return withScriptLock_(function () {
+    props.setProperty(PROP_KEYS.SUPPORT_AUTH_SALT, salt);
+    props.setProperty(PROP_KEYS.SUPPORT_AUTH_HASH, hash);
+    return true;
+  });
+}
+
+function configurarCredencialSuportePortal_(credencial) {
+  return setSupportCredentialInternal_(credencial);
+}
+
+function createSupportInviteInternal_(payload, author) {
+  var cfg = payload && typeof payload === "object" ? payload : {};
+  var rotulo = sanitizeSupportText_(cfg.rotulo || "Convite Operacional", 60, false) || "Convite Operacional";
+  var unidade = String(cfg.unidade || "TODAS").trim().toUpperCase();
+  if (["TODAS", "CPPA", "PEPOA", "MADRE"].indexOf(unidade) === -1) {
+    throw new Error("Unidade inválida para convite: " + unidade);
+  }
+  var dias = cfg.diasValidade !== undefined ? Number(cfg.diasValidade) : 14;
+  if (isNaN(dias) || dias < 1 || dias > 180) {
+    throw new Error("Validade do convite deve estar entre 1 e 180 dias.");
+  }
+  var maxUsos = cfg.maxUsos !== undefined ? Number(cfg.maxUsos) : 20;
+  if (isNaN(maxUsos) || maxUsos < 1 || maxUsos > 500) {
+    throw new Error("Limite de usos do convite deve estar entre 1 e 500.");
+  }
+  var rawCode = "SUP-INV-" + sha256Hex_((Utilities.getUuid ? Utilities.getUuid() : String(Math.random())) + ":" + Date.now()).slice(0, 12).toUpperCase();
+  var codeHash = sha256Hex_(rawCode);
+  var nowMs = Date.now();
+  var inviteRecord = {
+    id: "inv-" + nowMs + "-" + Math.floor(Math.random() * 10000),
+    rotulo: rotulo,
+    unidade: unidade,
+    codeHash: codeHash,
+    codePrefix: rawCode.slice(0, 12) + "…",
+    criadoEm: new Date(nowMs).toISOString(),
+    expiraEm: new Date(nowMs + (Math.floor(dias) * 86400000)).toISOString(),
+    maxUsos: Math.floor(maxUsos),
+    usos: 0,
+    ativo: true,
+    criadoPor: author || "admin"
+  };
+
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var all = getSupportInvitesRaw_();
+    all.unshift(inviteRecord);
+    persistSupportInvitesLocked_(props, all);
+    return {
+      success: true,
+      invite: {
+        id: inviteRecord.id,
+        rotulo: inviteRecord.rotulo,
+        unidade: inviteRecord.unidade,
+        codePrefix: inviteRecord.codePrefix,
+        criadoEm: inviteRecord.criadoEm,
+        expiraEm: inviteRecord.expiraEm,
+        maxUsos: inviteRecord.maxUsos,
+        usos: inviteRecord.usos,
+        ativo: inviteRecord.ativo
+      },
+      inviteCode: rawCode,
+      message: "Convite de suporte gerado. Copie o código agora, pois ele não será exibido novamente."
+    };
+  });
+}
+
+function gerarConviteSuportePortal_(rotulo, unidade, diasValidade, maxUsos) {
+  return createSupportInviteInternal_({
+    rotulo: rotulo,
+    unidade: unidade,
+    diasValidade: diasValidade,
+    maxUsos: maxUsos
+  }, "script-editor");
+}
+
+function revokeSupportInviteInternal_(inviteId, author) {
+  var id = String(inviteId || "").trim();
+  if (!id) throw new Error("ID do convite é obrigatório.");
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var all = getSupportInvitesRaw_();
+    var found = false;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id) {
+        all[i].ativo = false;
+        all[i].revogadoEm = new Date().toISOString();
+        all[i].revogadoPor = author || "admin";
+        found = true;
+        break;
+      }
+    }
+    if (!found) throw new Error("Convite não encontrado: " + id);
+    persistSupportInvitesLocked_(props, all);
+    return { success: true, message: "Convite revogado com sucesso." };
+  });
+}
+
+function saveSupportSettingsInternal_(payload, author) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Configurações de suporte inválidas.");
+  }
+  var next = getSupportSettings_();
+  if (payload.enabled !== undefined) next.enabled = Boolean(payload.enabled);
+  if (payload.allowGoogleSession !== undefined) next.allowGoogleSession = Boolean(payload.allowGoogleSession);
+  if (payload.retentionDaysClosed !== undefined) {
+    var rdc = Number(payload.retentionDaysClosed);
+    if (isNaN(rdc) || rdc < 7 || rdc > 365) throw new Error("retentionDaysClosed deve estar entre 7 e 365 dias.");
+    next.retentionDaysClosed = Math.floor(rdc);
+  }
+  if (payload.archiveRetentionDays !== undefined) {
+    var ard = Number(payload.archiveRetentionDays);
+    if (isNaN(ard) || ard < 30 || ard > 730) throw new Error("archiveRetentionDays deve estar entre 30 e 730 dias.");
+    next.archiveRetentionDays = Math.floor(ard);
+  }
+  if (payload.autoArchiveOnCloseDays !== undefined) {
+    var aad = Number(payload.autoArchiveOnCloseDays);
+    if (isNaN(aad) || aad < 0 || aad > 180) throw new Error("autoArchiveOnCloseDays deve estar entre 0 e 180 dias.");
+    next.autoArchiveOnCloseDays = Math.floor(aad);
+  }
+  if (payload.maxActiveSegments !== undefined) {
+    var mas = Number(payload.maxActiveSegments);
+    if (isNaN(mas) || mas < 2 || mas > 16) throw new Error("maxActiveSegments deve estar entre 2 e 16.");
+    next.maxActiveSegments = Math.floor(mas);
+  }
+  if (payload.maxArchiveSegments !== undefined) {
+    var mar = Number(payload.maxArchiveSegments);
+    if (isNaN(mar) || mar < 0 || mar > 10) throw new Error("maxArchiveSegments deve estar entre 0 e 10.");
+    next.maxArchiveSegments = Math.floor(mar);
+  }
+  if (typeof payload.newSupportCredential === "string" && payload.newSupportCredential.trim()) {
+    setSupportCredentialInternal_(payload.newSupportCredential.trim());
+  }
+  next.atualizadoEm = new Date().toISOString();
+  next.atualizadoPor = author || "admin";
+
+  return withScriptLock_(function () {
+    getProps_().setProperty(PROP_KEYS.SUPPORT_SETTINGS, JSON.stringify(next));
+    return {
+      success: true,
+      settings: next,
+      supportCredentialConfigured: isSupportCredentialConfigured_(),
+      activeInvitesCount: getActiveSupportInvitesCount_(),
+      message: "Configurações da Central de Suporte salvas."
+    };
+  });
+}
+
+function verifySupportAccess_(payload, unidade) {
+  var settings = getSupportSettings_();
+  if (!settings.enabled) {
+    throw new Error("403 Serviço Desabilitado: A abertura de chamados de suporte está temporariamente desabilitada.");
+  }
+
+  var googleEmail = getActiveGoogleEmail_();
+  if (googleEmail && settings.allowGoogleSession !== false) {
+    return {
+      ok: true,
+      method: "google_session",
+      identity: googleEmail,
+      inviteId: null
+    };
+  }
+
+  var rawCode = String((payload && (payload.supportCode || payload.codigoAcesso)) || "").trim();
+  if (!rawCode) {
+    throw new Error("403 Não Autorizado: Credencial de suporte, convite válido ou sessão Google identificada é obrigatória. Envios anônimos irrestritos não são permitidos.");
+  }
+
+  var props = getProps_();
+  var webhookSecret = props.getProperty(PROP_KEYS.WEBHOOK_SECRET) || "";
+  if (webhookSecret && constantTimeEqual_(rawCode, webhookSecret)) {
+    throw new Error("403 Não Autorizado: Segredo de publicação não é aceito como credencial de suporte.");
+  }
+  var adminSalt = props.getProperty(PROP_KEYS.ADMIN_AUTH_SALT) || "";
+  var adminHash = props.getProperty(PROP_KEYS.ADMIN_AUTH_HASH) || "";
+  if (adminSalt && adminHash && constantTimeEqual_(sha256Hex_(adminSalt + ":" + rawCode), adminHash)) {
+    throw new Error("403 Não Autorizado: Chave administrativa não deve ser usada como credencial pública de suporte.");
+  }
+
+  var supSalt = props.getProperty(PROP_KEYS.SUPPORT_AUTH_SALT) || "";
+  var supHash = props.getProperty(PROP_KEYS.SUPPORT_AUTH_HASH) || "";
+  if (supSalt && supHash) {
+    var candidateHash = sha256Hex_(supSalt + ":" + rawCode);
+    if (constantTimeEqual_(candidateHash, supHash)) {
+      return {
+        ok: true,
+        method: "support_credential",
+        identity: "credencial-suporte",
+        inviteId: null
+      };
+    }
+  }
+
+  var codeDigest = sha256Hex_(rawCode);
+  var invites = getSupportInvitesRaw_();
+  var nowMs = Date.now();
+  for (var i = 0; i < invites.length; i++) {
+    var inv = invites[i];
+    if (!inv || !inv.codeHash) continue;
+    if (constantTimeEqual_(codeDigest, inv.codeHash)) {
+      if (inv.ativo !== true) {
+        throw new Error("403 Não Autorizado: Convite de suporte revogado.");
+      }
+      if (inv.expiraEm && Date.parse(inv.expiraEm) <= nowMs) {
+        throw new Error("403 Não Autorizado: Convite de suporte expirado.");
+      }
+      if (Number(inv.usos || 0) >= Number(inv.maxUsos || 1)) {
+        throw new Error("403 Não Autorizado: Limite de usos do convite de suporte atingido.");
+      }
+      if (inv.unidade && inv.unidade !== "TODAS" && unidade && inv.unidade !== unidade) {
+        throw new Error("403 Não Autorizado: Convite restrito à unidade " + inv.unidade + ".");
+      }
+      return {
+        ok: true,
+        method: "support_invite",
+        identity: "convite:" + inv.id,
+        inviteId: inv.id
+      };
+    }
+  }
+
+  throw new Error("403 Não Autorizado: Credencial ou convite de suporte inválido.");
+}
+
+function checkAndIncrementRateLimit_(bucket, identityKey, maxHits, windowSec, increment) {
+  if (typeof CacheService === "undefined" || !CacheService || typeof CacheService.getScriptCache !== "function") {
+    return { allowed: true, remaining: maxHits };
+  }
+  try {
+    var cache = CacheService.getScriptCache();
+    var cacheKey = "SUP_RL_" + bucket + "_" + sha256Hex_(identityKey).slice(0, 24);
+    var nowMs = Date.now();
+    var winMs = (windowSec || 600) * 1000;
+    var rec = { count: 0, resetAt: nowMs + winMs };
+    var raw = cache.get(cacheKey);
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.count === "number" && parsed.resetAt > nowMs) {
+        rec = parsed;
+      }
+    }
+    if (rec.count >= maxHits) {
+      return { allowed: false, remaining: 0, retryAfterMs: Math.max(1000, rec.resetAt - nowMs) };
+    }
+    if (increment !== false) {
+      rec.count += 1;
+      cache.put(cacheKey, JSON.stringify(rec), windowSec || 600);
+    }
+    return { allowed: true, remaining: Math.max(0, maxHits - rec.count) };
+  } catch (e) {
+    return { allowed: true, remaining: maxHits };
+  }
+}
+
+function getSupportIndex_() {
+  var def = {
+    schemaVersion: "2.2",
+    segments: [],
+    archiveSegments: [],
+    totalEverCreated: 0,
+    lastCleanupAt: null
+  };
+  try {
+    var raw = getProps_().getProperty(PROP_KEYS.SUPPORT_INDEX);
+    if (!raw) return def;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return def;
+    return {
+      schemaVersion: "2.2",
+      segments: Array.isArray(parsed.segments) ? parsed.segments.slice() : [],
+      archiveSegments: Array.isArray(parsed.archiveSegments) ? parsed.archiveSegments.slice() : [],
+      totalEverCreated: Number(parsed.totalEverCreated || 0),
+      lastCleanupAt: parsed.lastCleanupAt || null
+    };
+  } catch (e) {
+    return def;
+  }
+}
+
+function readTicketsFromSegmentKeys_(props, segKeys, isArchived) {
+  var list = [];
+  for (var i = 0; i < segKeys.length; i++) {
+    try {
+      var raw = props.getProperty(segKeys[i]);
+      if (!raw) continue;
+      var arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (var j = 0; j < arr.length; j++) {
+          if (arr[j] && typeof arr[j] === "object") {
+            var item = arr[j];
+            item.arquivado = Boolean(isArchived || item.arquivado);
+            list.push(item);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  return list;
+}
+
+function getAllSupportTickets_(includeArchived) {
+  var props = getProps_();
+  var idx = getSupportIndex_();
+  var active = readTicketsFromSegmentKeys_(props, idx.segments, false);
+  var archived = includeArchived ? readTicketsFromSegmentKeys_(props, idx.archiveSegments, true) : [];
+  var all = active.concat(archived);
+  all.sort(function (a, b) {
+    return (Date.parse(b.atualizadoEm || b.criadoEm || 0) || 0) - (Date.parse(a.atualizadoEm || a.criadoEm || 0) || 0);
+  });
+  return { active: active, archived: archived, all: all, index: idx };
+}
+
+function boundTicketSize_(ticket) {
+  var clone = cloneJson_(ticket);
+  if (Array.isArray(clone.historico) && clone.historico.length > 24) {
+    clone.historico = [clone.historico[0]].concat(clone.historico.slice(-23));
+  }
+  if (Array.isArray(clone.respostasPublicas) && clone.respostasPublicas.length > 15) {
+    clone.respostasPublicas = clone.respostasPublicas.slice(-15);
+  }
+  if (Array.isArray(clone.notasInternas) && clone.notasInternas.length > 15) {
+    clone.notasInternas = clone.notasInternas.slice(-15);
+  }
+  while (getUtf8ByteLength_(JSON.stringify(clone)) > 6800 && Array.isArray(clone.historico) && clone.historico.length > 2) {
+    clone.historico.splice(1, 1);
+  }
+  return clone;
+}
+
+function writeTicketSegmentsLocked_(props, prefix, tickets, maxSegs, maxPerSeg, oldKeys) {
+  var chunks = [];
+  var current = [];
+  for (var i = 0; i < tickets.length; i++) {
+    var t = boundTicketSize_(tickets[i]);
+    var candidate = current.concat([t]);
+    if (current.length > 0 && (current.length >= maxPerSeg || getUtf8ByteLength_(JSON.stringify(candidate)) > MAX_PROPERTY_BYTES)) {
+      chunks.push(current);
+      current = [t];
+    } else {
+      current = candidate;
+    }
+  }
+  if (current.length > 0) chunks.push(current);
+
+  if (chunks.length > maxSegs) {
+    return { ok: false, neededSegments: chunks.length, maxSegments: maxSegs };
+  }
+
+  var newKeys = [];
+  for (var c = 0; c < chunks.length; c++) {
+    var key = prefix + c;
+    var serialized = JSON.stringify(chunks[c]);
+    if (getUtf8ByteLength_(serialized) > MAX_PROPERTY_BYTES) {
+      return { ok: false, error: "Chamado excede o limite seguro por propriedade (" + MAX_PROPERTY_BYTES + " B)." };
+    }
+    props.setProperty(key, serialized);
+    newKeys.push(key);
+  }
+
+  for (var o = 0; o < (oldKeys || []).length; o++) {
+    var okKey = oldKeys[o];
+    if (newKeys.indexOf(okKey) === -1) {
+      if (typeof props.deleteProperty === "function") props.deleteProperty(okKey);
+      else props.setProperty(okKey, "[]");
+    }
+  }
+  return { ok: true, keys: newKeys };
+}
+
+function runSupportRetentionLocked_(props, settings, nowMs, overrideCloseDays) {
+  var idx = getSupportIndex_();
+  var active = readTicketsFromSegmentKeys_(props, idx.segments, false);
+  var archived = readTicketsFromSegmentKeys_(props, idx.archiveSegments, true);
+  var tsNow = nowMs || Date.now();
+
+  var closeDays = overrideCloseDays !== undefined ? Number(overrideCloseDays) : Number(settings.retentionDaysClosed || 90);
+  var closeCutoff = tsNow - (Math.max(0, closeDays) * 86400000);
+  var archCutoff = tsNow - (Number(settings.archiveRetentionDays || 180) * 86400000);
+
+  var remainingActive = [];
+  var newlyArchived = 0;
+  for (var i = 0; i < active.length; i++) {
+    var t = active[i];
+    var isClosed = t.estado === "ENCERRADO" || t.estado === "RESOLVIDO";
+    var refTs = Date.parse(t.encerradoEm || t.resolvidoEm || t.atualizadoEm || t.criadoEm || 0) || 0;
+    if (isClosed && refTs <= closeCutoff) {
+      t.arquivado = true;
+      t.arquivadoEm = t.arquivadoEm || new Date(tsNow).toISOString();
+      archived.unshift(t);
+      newlyArchived++;
+    } else {
+      t.arquivado = false;
+      remainingActive.push(t);
+    }
+  }
+
+  var purgedArchived = 0;
+  var keptArchived = [];
+  for (var j = 0; j < archived.length; j++) {
+    var a = archived[j];
+    var aTs = Date.parse(a.arquivadoEm || a.encerradoEm || a.atualizadoEm || a.criadoEm || 0) || 0;
+    if (aTs < archCutoff) {
+      purgedArchived++;
+    } else {
+      keptArchived.push(a);
+    }
+  }
+
+  // Enforce archive segment limit by dropping oldest archived items first
+  var maxArchSegs = Number(settings.maxArchiveSegments || 0);
+  var maxPerSeg = Number(settings.maxTicketsPerSegment || 5);
+  var archWrite;
+  if (maxArchSegs === 0) {
+    purgedArchived += keptArchived.length;
+    keptArchived = [];
+    archWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_ARCH_PREFIX, [], 0, maxPerSeg, idx.archiveSegments);
+  } else {
+    archWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_ARCH_PREFIX, keptArchived, maxArchSegs, maxPerSeg, idx.archiveSegments);
+    while (!archWrite.ok && keptArchived.length > 0) {
+      keptArchived.pop();
+      purgedArchived++;
+      archWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_ARCH_PREFIX, keptArchived, maxArchSegs, maxPerSeg, idx.archiveSegments);
+    }
+  }
+
+  // Enforce active segment limit by archiving oldest closed/resolved first
+  var actWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_SEG_PREFIX, remainingActive, settings.maxActiveSegments, maxPerSeg, idx.segments);
+  while (!actWrite.ok && remainingActive.length > 0) {
+    var moveIdx = -1;
+    for (var k = remainingActive.length - 1; k >= 0; k--) {
+      if (remainingActive[k].estado === "ENCERRADO" || remainingActive[k].estado === "RESOLVIDO") {
+        moveIdx = k;
+        break;
+      }
+    }
+    if (moveIdx === -1) break;
+    var moved = remainingActive.splice(moveIdx, 1)[0];
+    moved.arquivado = true;
+    moved.arquivadoEm = new Date(tsNow).toISOString();
+    keptArchived.unshift(moved);
+    newlyArchived++;
+    actWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_SEG_PREFIX, remainingActive, settings.maxActiveSegments, maxPerSeg, idx.segments);
+  }
+
+  if (newlyArchived > 0 && maxArchSegs > 0) {
+    archWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_ARCH_PREFIX, keptArchived, maxArchSegs, maxPerSeg, idx.archiveSegments);
+    while (!archWrite.ok && keptArchived.length > 0) {
+      keptArchived.pop();
+      purgedArchived++;
+      archWrite = writeTicketSegmentsLocked_(props, PROP_KEYS.SUPPORT_ARCH_PREFIX, keptArchived, maxArchSegs, maxPerSeg, idx.archiveSegments);
+    }
+  }
+
+  idx.segments = actWrite.ok ? actWrite.keys : idx.segments;
+  idx.archiveSegments = archWrite && archWrite.ok ? archWrite.keys : [];
+  idx.lastCleanupAt = new Date(tsNow).toISOString();
+  props.setProperty(PROP_KEYS.SUPPORT_INDEX, JSON.stringify(idx));
+
+  return {
+    success: actWrite.ok,
+    activeCount: remainingActive.length,
+    archivedCount: keptArchived.length,
+    newlyArchived: newlyArchived,
+    purgedArchived: purgedArchived,
+    index: idx
+  };
+}
+
+function getSupportDedupeList_() {
+  try {
+    var raw = getProps_().getProperty(PROP_KEYS.SUPPORT_DEDUPE);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveSupportDedupeLocked_(props, list) {
+  var items = (list || []).slice(-80);
+  while (items.length > 1 && getUtf8ByteLength_(JSON.stringify(items)) > MAX_PROPERTY_BYTES) {
+    items.shift();
+  }
+  props.setProperty(PROP_KEYS.SUPPORT_DEDUPE, JSON.stringify(items));
+}
+
+function generateUniqueProtocolLocked_(existingTickets) {
+  var used = {};
+  for (var i = 0; i < existingTickets.length; i++) {
+    if (existingTickets[i] && existingTickets[i].protocolo) {
+      used[existingTickets[i].protocolo] = true;
+    }
+  }
+  var datePart = getTodayIsoSaoPaulo_().replace(/-/g, "");
+  for (var attempt = 0; attempt < 20; attempt++) {
+    var seed = (Utilities.getUuid ? Utilities.getUuid() : String(Math.random())) + ":" + Date.now() + ":" + attempt;
+    var suffix = sha256Hex_(seed).slice(0, 6).toUpperCase();
+    var candidate = "SUP-" + datePart + "-" + suffix;
+    if (!used[candidate]) return candidate;
+  }
+  return "SUP-" + datePart + "-" + sha256Hex_(String(Date.now()) + ":" + String(Math.random())).slice(0, 6).toUpperCase();
+}
+
+function generateSupportTrackingToken_() {
+  var seed = (Utilities.getUuid ? Utilities.getUuid() : String(Math.random())) + ":" + Date.now() + ":" + String(Math.random());
+  return "stk_" + sha256Hex_(seed).slice(0, 32);
+}
+
+function resolveReleaseContextForTicket_(unidade, ambiente) {
+  var envKey = resolveEnvKey_(unidade, ambiente);
+  var relState = getReleaseStateCurrent_();
+  var rel = envKey && relState && relState.environments ? relState.environments[envKey] : null;
+  if (!rel) {
+    return {
+      envKey: envKey,
+      confirmadaPorRelease: false,
+      versao: null,
+      candidatoVersao: null,
+      commit: null,
+      deploymentId: null,
+      deploymentVersion: null,
+      estadoHomologacao: null,
+      publicadoEm: null,
+      portalVersao: PORTAL_VERSION
+    };
+  }
+  return {
+    envKey: envKey,
+    confirmadaPorRelease: true,
+    versao: rel.versao || null,
+    candidatoVersao: rel.candidatoVersao || null,
+    commit: rel.commit || null,
+    deploymentId: rel.deploymentId || null,
+    deploymentVersion: rel.deploymentVersion || null,
+    estadoHomologacao: rel.estadoHomologacao || null,
+    publicadoEm: rel.publicadoEm || null,
+    portalVersao: PORTAL_VERSION
+  };
+}
+
+function checkSensitiveSupportPayload_(raw) {
+  if (raw.anexos !== undefined || raw.attachments !== undefined || raw.file !== undefined || raw.files !== undefined) {
+    throw new Error("Anexos e arquivos não são permitidos na Central de Suporte.");
+  }
+  if (raw.confirmacaoSemDadosClinicos !== true) {
+    throw new Error("Confirme explicitamente que o registro não contém dados identificáveis de pacientes ou informações clínicas sigilosas.");
+  }
+  var allText = [
+    raw.titulo,
+    raw.descricao,
+    raw.observado,
+    raw.esperado,
+    raw.passosReproduzir,
+    raw.solicitanteNome,
+    raw.solicitanteContato
+  ].map(function (v) { return String(v || ""); }).join("\n");
+
+  if (/data:[a-z0-9.+-]+\/[a-z0-9.+-]+;base64,/i.test(allText)) {
+    throw new Error("Conteúdo em base64/anexo incorporado não é permitido.");
+  }
+  if (/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/.test(allText)) {
+    throw new Error("Não informe CPF no chamado de suporte (remova números no formato 000.000.000-00).");
+  }
+  if (/\b(?:cpf|infopen|prontu[aá]rio)\s*[:=#-]\s*\d{5,}/i.test(allText)) {
+    throw new Error("Não informe identificadores individuais de paciente (CPF/INFOPEN/prontuário) no chamado.");
+  }
+}
+
+function validateSupportTicketInput_(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Dados do chamado inválidos: objeto esperado.");
+  }
+  if (getUtf8ByteLength_(JSON.stringify(raw)) > 12000) {
+    throw new Error("Payload do chamado excede o tamanho máximo permitido.");
+  }
+  if (raw.website && String(raw.website).trim() !== "") {
+    throw new Error("Envio rejeitado pela verificação anti-spam.");
+  }
+  checkSensitiveSupportPayload_(raw);
+
+  var categoria = sanitizeSupportText_(raw.categoria, 60, false);
+  if (VALID_SUPPORT_CATEGORIES.indexOf(categoria) === -1) {
+    throw new Error("Categoria inválida. Valores aceitos: " + VALID_SUPPORT_CATEGORIES.join(", "));
+  }
+  var unidade = String(raw.unidade || "").trim().toUpperCase();
+  if (VALID_UNITS.indexOf(unidade) === -1) {
+    throw new Error("Unidade inválida. Valores aceitos: " + VALID_UNITS.join(", "));
+  }
+  var ambiente = String(raw.ambiente || "").trim().toUpperCase();
+  if (VALID_ENVS.indexOf(ambiente) === -1) {
+    throw new Error("Ambiente inválido. Valores aceitos: " + VALID_ENVS.join(", "));
+  }
+  var modulo = sanitizeSupportText_(raw.modulo, 40, false);
+  if (VALID_SUPPORT_MODULES.indexOf(modulo) === -1) {
+    throw new Error("Módulo inválido. Valores aceitos: " + VALID_SUPPORT_MODULES.join(", "));
+  }
+  if (modulo === "APAC" && unidade !== "PEPOA") {
+    throw new Error("O módulo APAC é pertinente exclusivamente à unidade PEPOA.");
+  }
+
+  var titulo = sanitizeSupportText_(raw.titulo, 140, false);
+  if (titulo.length < 5 || titulo.length > 140) {
+    throw new Error("Título deve ter entre 5 e 140 caracteres.");
+  }
+  var descricao = sanitizeSupportText_(raw.descricao, 2000, true);
+  if (descricao.length < 10 || descricao.length > 2000) {
+    throw new Error("Descrição deve ter entre 10 e 2000 caracteres.");
+  }
+  var observado = sanitizeSupportText_(raw.observado || "", 800, true);
+  var esperado = sanitizeSupportText_(raw.esperado || "", 600, true);
+  var passosReproduzir = sanitizeSupportText_(raw.passosReproduzir || "", 800, true);
+
+  var impactoInformado = sanitizeSupportText_(raw.impactoInformado || "", 30, false);
+  if (impactoInformado && VALID_SUPPORT_IMPACTS.indexOf(impactoInformado) === -1) {
+    throw new Error("Impacto informado inválido. Valores aceitos: " + VALID_SUPPORT_IMPACTS.join(", "));
+  }
+
+  var solicitanteNome = sanitizeSupportText_(raw.solicitanteNome || "", 80, false);
+  if (solicitanteNome.length < 3 || solicitanteNome.length > 80) {
+    throw new Error("Identificação do solicitante é obrigatória (3 a 80 caracteres).");
+  }
+  var solicitanteContato = sanitizeSupportText_(raw.solicitanteContato || "", 100, false);
+  var clientRequestId = sanitizeSupportText_(raw.clientRequestId || "", 80, false);
+  if (clientRequestId && clientRequestId.length < 8) {
+    throw new Error("clientRequestId inválido (mínimo 8 caracteres).");
+  }
+
+  return {
+    categoria: categoria,
+    unidade: unidade,
+    ambiente: ambiente,
+    modulo: modulo,
+    titulo: titulo,
+    descricao: descricao,
+    observado: observado,
+    esperado: esperado,
+    passosReproduzir: passosReproduzir,
+    impactoInformado: impactoInformado,
+    solicitanteNome: solicitanteNome,
+    solicitanteContato: solicitanteContato,
+    clientRequestId: clientRequestId
+  };
+}
+
+function buildPublicTicketView_(ticket) {
+  if (!ticket) return null;
+  var publicHistory = (Array.isArray(ticket.historico) ? ticket.historico : [])
+    .filter(function (h) { return h && h.publico !== false; })
+    .map(function (h) {
+      return {
+        id: h.id,
+        tipo: h.tipo,
+        deEstado: h.deEstado || null,
+        paraEstado: h.paraEstado || null,
+        detalhe: h.detalhe || "",
+        criadoEm: h.criadoEm
+      };
+    });
+  var publicReplies = (Array.isArray(ticket.respostasPublicas) ? ticket.respostasPublicas : [])
+    .map(function (r) {
+      return {
+        id: r.id,
+        autor: r.autor || "Equipe de Suporte",
+        origem: r.origem || "admin",
+        mensagem: r.mensagem,
+        criadoEm: r.criadoEm
+      };
+    });
+  var links = ticket.linksRelacionados || {};
+  return {
+    id: ticket.id,
+    protocolo: ticket.protocolo,
+    categoria: ticket.categoria,
+    unidade: ticket.unidade,
+    ambiente: ticket.ambiente,
+    modulo: ticket.modulo,
+    titulo: ticket.titulo,
+    descricao: ticket.descricao,
+    observado: ticket.observado || "",
+    esperado: ticket.esperado || "",
+    passosReproduzir: ticket.passosReproduzir || "",
+    impactoInformado: ticket.impactoInformado || "",
+    prioridade: ticket.prioridade,
+    estado: ticket.estado,
+    versaoContexto: ticket.versaoContexto || null,
+    criadoEm: ticket.criadoEm,
+    atualizadoEm: ticket.atualizadoEm,
+    resolvidoEm: ticket.resolvidoEm || null,
+    encerradoEm: ticket.encerradoEm || null,
+    arquivado: Boolean(ticket.arquivado),
+    respostasPublicas: publicReplies,
+    historicoPublico: publicHistory,
+    linksRelacionados: {
+      commit: links.commit || "",
+      releaseEventId: links.releaseEventId || "",
+      releaseVersao: links.releaseVersao || "",
+      unidade: links.unidade || ticket.unidade,
+      ambiente: links.ambiente || ticket.ambiente,
+      duplicadoDe: links.duplicadoDe || ""
+    }
+  };
+}
+
+function buildAdminTicketView_(ticket) {
+  if (!ticket) return null;
+  var copy = cloneJson_(ticket);
+  delete copy.trackingTokenHash;
+  return copy;
+}
+
+function createSupportTicketInternal_(rawPayload) {
+  var clean = validateSupportTicketInput_(rawPayload);
+  var auth = verifySupportAccess_(rawPayload, clean.unidade);
+
+  var rlIdentity = checkAndIncrementRateLimit_("create_id", auth.identity + "|" + clean.unidade, 5, 600, false);
+  if (!rlIdentity.allowed) {
+    throw new Error("429 Limite de frequência atingido para esta credencial. Aguarde alguns minutos antes de enviar novo chamado.");
+  }
+  var rlGlobal = checkAndIncrementRateLimit_("create_global", "portal_global", 25, 600, false);
+  if (!rlGlobal.allowed) {
+    throw new Error("429 Volume elevado de registros no momento. Tente novamente em alguns minutos.");
+  }
+
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var settings = getSupportSettings_();
+
+    if (clean.clientRequestId) {
+      var dedupe = getSupportDedupeList_();
+      for (var d = 0; d < dedupe.length; d++) {
+        if (dedupe[d].reqId === clean.clientRequestId) {
+          var existingData = getAllSupportTickets_(true);
+          var existingTicket = existingData.all.filter(function (x) { return x.id === dedupe[d].id; })[0] || null;
+          return {
+            success: true,
+            duplicate: true,
+            protocolo: dedupe[d].protocolo,
+            ticketId: dedupe[d].id,
+            ticket: existingTicket ? buildPublicTicketView_(existingTicket) : null,
+            message: "Chamado já registrado anteriormente para esta requisição (idempotente)."
+          };
+        }
+      }
+    }
+
+    // Re-validate and consume invite inside lock to prevent concurrent overuse
+    if (auth.method === "support_invite" && auth.inviteId) {
+      var invites = getSupportInvitesRaw_();
+      var invFound = null;
+      for (var iv = 0; iv < invites.length; iv++) {
+        if (invites[iv].id === auth.inviteId) {
+          invFound = invites[iv];
+          break;
+        }
+      }
+      if (!invFound || invFound.ativo !== true || (invFound.expiraEm && Date.parse(invFound.expiraEm) <= Date.now()) || Number(invFound.usos || 0) >= Number(invFound.maxUsos || 1)) {
+        throw new Error("403 Não Autorizado: Convite expirado ou limite de usos atingido.");
+      }
+      invFound.usos = Number(invFound.usos || 0) + 1;
+      invFound.ultimoUsoEm = new Date().toISOString();
+      persistSupportInvitesLocked_(props, invites);
+    }
+
+    checkAndIncrementRateLimit_("create_id", auth.identity + "|" + clean.unidade, 5, 600, true);
+    checkAndIncrementRateLimit_("create_global", "portal_global", 25, 600, true);
+
+    var ticketData = getAllSupportTickets_(true);
+    var active = ticketData.active.slice();
+    var idx = ticketData.index;
+
+    var nowIso = new Date().toISOString();
+    var protocolo = generateUniqueProtocolLocked_(ticketData.all);
+    var trackingToken = generateSupportTrackingToken_();
+    var trackingTokenHash = sha256Hex_(trackingToken);
+    var releaseContext = resolveReleaseContextForTicket_(clean.unidade, clean.ambiente);
+    var ticketId = "tkt-" + Date.now() + "-" + sha256Hex_(protocolo + ":" + Math.random()).slice(0, 6);
+
+    var ticket = {
+      id: ticketId,
+      protocolo: protocolo,
+      trackingTokenHash: trackingTokenHash,
+      categoria: clean.categoria,
+      unidade: clean.unidade,
+      ambiente: clean.ambiente,
+      modulo: clean.modulo,
+      titulo: clean.titulo,
+      descricao: clean.descricao,
+      observado: clean.observado,
+      esperado: clean.esperado,
+      passosReproduzir: clean.passosReproduzir,
+      impactoInformado: clean.impactoInformado,
+      prioridade: "normal",
+      estado: "RECEBIDO",
+      versaoContexto: releaseContext,
+      solicitante: {
+        nome: clean.solicitanteNome,
+        contato: clean.solicitanteContato || (auth.method === "google_session" ? auth.identity : ""),
+        metodoAuth: auth.method,
+        conviteId: auth.inviteId || null
+      },
+      criadoEm: nowIso,
+      atualizadoEm: nowIso,
+      resolvidoEm: null,
+      encerradoEm: null,
+      arquivado: false,
+      respostasPublicas: [],
+      notasInternas: [],
+      linksRelacionados: {
+        commit: releaseContext.commit || "",
+        releaseEventId: "",
+        releaseVersao: releaseContext.versao || "",
+        unidade: clean.unidade,
+        ambiente: clean.ambiente,
+        duplicadoDe: ""
+      },
+      historico: [
+        {
+          id: "hist-" + Date.now() + "-1",
+          tipo: "criado",
+          deEstado: null,
+          paraEstado: "RECEBIDO",
+          detalhe: "Chamado registrado (" + clean.categoria + " · " + clean.unidade + " " + clean.ambiente + " · " + clean.modulo + ").",
+          autor: clean.solicitanteNome,
+          publico: true,
+          criadoEm: nowIso
+        }
+      ]
+    };
+
+    active.unshift(ticket);
+    var writeRes = writeTicketSegmentsLocked_(
+      props,
+      PROP_KEYS.SUPPORT_SEG_PREFIX,
+      active,
+      settings.maxActiveSegments,
+      settings.maxTicketsPerSegment,
+      idx.segments
+    );
+
+    if (!writeRes.ok) {
+      // Try automatic retention sweep of old closed/resolved tickets first
+      runSupportRetentionLocked_(props, settings, Date.now());
+      var reloaded = getAllSupportTickets_(false);
+      active = [ticket].concat(reloaded.active);
+      idx = reloaded.index;
+      writeRes = writeTicketSegmentsLocked_(
+        props,
+        PROP_KEYS.SUPPORT_SEG_PREFIX,
+        active,
+        settings.maxActiveSegments,
+        settings.maxTicketsPerSegment,
+        idx.segments
+      );
+      if (!writeRes.ok) {
+        throw new Error("Capacidade máxima de chamados ativos atingida no armazenamento do Apps Script. Solicite ao administrador executar retenção/arquivamento.");
+      }
+    }
+
+    idx.segments = writeRes.keys;
+    idx.totalEverCreated = Number(idx.totalEverCreated || 0) + 1;
+    props.setProperty(PROP_KEYS.SUPPORT_INDEX, JSON.stringify(idx));
+
+    if (clean.clientRequestId) {
+      var dedupeList = getSupportDedupeList_();
+      dedupeList.push({ reqId: clean.clientRequestId, id: ticket.id, protocolo: ticket.protocolo, criadoEm: nowIso });
+      saveSupportDedupeLocked_(props, dedupeList);
+    }
+
+    return {
+      success: true,
+      duplicate: false,
+      ticketId: ticket.id,
+      protocolo: ticket.protocolo,
+      trackingToken: trackingToken,
+      ticket: buildPublicTicketView_(ticket),
+      message: "Chamado registrado com sucesso. Guarde o protocolo e o token individual de acompanhamento."
+    };
+  });
+}
+
+function lookupSupportTicketInternal_(protocolo, trackingToken) {
+  var cleanProto = String(protocolo || "").trim().toUpperCase();
+  var cleanToken = String(trackingToken || "").trim();
+  if (!cleanProto || !cleanToken || cleanToken.length < 16) {
+    throw new Error("Chamado não encontrado ou token de acompanhamento inválido.");
+  }
+
+  var rlGlobal = checkAndIncrementRateLimit_("lookup_fail_global", "global", 40, 600, false);
+  var rlProto = checkAndIncrementRateLimit_("lookup_fail_proto", cleanProto, 10, 600, false);
+  if (!rlGlobal.allowed || !rlProto.allowed) {
+    throw new Error("429 Muitas tentativas inválidas de consulta. Aguarde alguns minutos.");
+  }
+
+  var data = getAllSupportTickets_(true);
+  var found = null;
+  for (var i = 0; i < data.all.length; i++) {
+    if (String(data.all[i].protocolo || "").toUpperCase() === cleanProto) {
+      found = data.all[i];
+      break;
+    }
+  }
+  var tokenHash = sha256Hex_(cleanToken);
+  if (!found || !found.trackingTokenHash || !constantTimeEqual_(tokenHash, found.trackingTokenHash)) {
+    checkAndIncrementRateLimit_("lookup_fail_global", "global", 40, 600, true);
+    checkAndIncrementRateLimit_("lookup_fail_proto", cleanProto, 10, 600, true);
+    throw new Error("Chamado não encontrado ou token de acompanhamento inválido.");
+  }
+
+  return {
+    success: true,
+    ticket: buildPublicTicketView_(found)
+  };
+}
+
+function addPublicSupportReplyInternal_(protocolo, trackingToken, rawMessage) {
+  var cleanProto = String(protocolo || "").trim().toUpperCase();
+  var cleanToken = String(trackingToken || "").trim();
+  if (!cleanProto || !cleanToken || cleanToken.length < 16) {
+    throw new Error("Chamado não encontrado ou token de acompanhamento inválido.");
+  }
+  var mensagem = sanitizeSupportText_(rawMessage, 600, true);
+  if (mensagem.length < 3) {
+    throw new Error("Mensagem complementar deve ter pelo menos 3 caracteres.");
+  }
+  checkSensitiveSupportPayload_({
+    titulo: "complemento",
+    descricao: mensagem,
+    confirmacaoSemDadosClinicos: true
+  });
+
+  var rlReply = checkAndIncrementRateLimit_("public_reply", cleanProto, 8, 600, false);
+  if (!rlReply.allowed) {
+    throw new Error("429 Limite de mensagens atingido para este chamado. Aguarde alguns minutos.");
+  }
+
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var settings = getSupportSettings_();
+    var data = getAllSupportTickets_(false);
+    var found = null;
+    for (var i = 0; i < data.active.length; i++) {
+      if (String(data.active[i].protocolo || "").toUpperCase() === cleanProto) {
+        found = data.active[i];
+        break;
+      }
+    }
+    var tokenHash = sha256Hex_(cleanToken);
+    if (!found || !found.trackingTokenHash || !constantTimeEqual_(tokenHash, found.trackingTokenHash)) {
+      checkAndIncrementRateLimit_("lookup_fail_proto", cleanProto, 10, 600, true);
+      throw new Error("Chamado não encontrado ou token de acompanhamento inválido.");
+    }
+    if (found.estado === "ENCERRADO") {
+      throw new Error("Este chamado já está encerrado e não aceita novas mensagens públicas.");
+    }
+    checkAndIncrementRateLimit_("public_reply", cleanProto, 8, 600, true);
+
+    var nowIso = new Date().toISOString();
+    found.respostasPublicas = Array.isArray(found.respostasPublicas) ? found.respostasPublicas : [];
+    found.respostasPublicas.push({
+      id: "rsp-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+      autor: found.solicitante && found.solicitante.nome ? found.solicitante.nome : "Solicitante",
+      origem: "solicitante",
+      mensagem: mensagem,
+      criadoEm: nowIso
+    });
+    if (found.estado === "AGUARDANDO_INFORMACOES") {
+      found.historico.push({
+        id: "hist-" + Date.now() + "-st",
+        tipo: "estado",
+        deEstado: "AGUARDANDO_INFORMACOES",
+        paraEstado: "EM_ANALISE",
+        detalhe: "Informações complementares enviadas pelo solicitante.",
+        autor: found.solicitante && found.solicitante.nome ? found.solicitante.nome : "Solicitante",
+        publico: true,
+        criadoEm: nowIso
+      });
+      found.estado = "EM_ANALISE";
+    } else {
+      found.historico.push({
+        id: "hist-" + Date.now() + "-msg",
+        tipo: "resposta_publica",
+        deEstado: null,
+        paraEstado: null,
+        detalhe: "Complemento público registrado pelo solicitante.",
+        autor: found.solicitante && found.solicitante.nome ? found.solicitante.nome : "Solicitante",
+        publico: true,
+        criadoEm: nowIso
+      });
+    }
+    found.atualizadoEm = nowIso;
+
+    var writeRes = writeTicketSegmentsLocked_(
+      props,
+      PROP_KEYS.SUPPORT_SEG_PREFIX,
+      data.active,
+      settings.maxActiveSegments,
+      settings.maxTicketsPerSegment,
+      data.index.segments
+    );
+    if (!writeRes.ok) {
+      throw new Error("Falha ao atualizar chamado no armazenamento segmentado.");
+    }
+    data.index.segments = writeRes.keys;
+    props.setProperty(PROP_KEYS.SUPPORT_INDEX, JSON.stringify(data.index));
+    return {
+      success: true,
+      ticket: buildPublicTicketView_(found),
+      message: "Complemento registrado no chamado."
+    };
+  });
+}
+
+function updateAdminSupportTicketInternal_(payload, author) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Dados de atualização do chamado inválidos.");
+  }
+  var targetId = String(payload.id || payload.protocolo || "").trim();
+  if (!targetId) {
+    throw new Error("ID ou protocolo do chamado é obrigatório.");
+  }
+
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var settings = getSupportSettings_();
+    var data = getAllSupportTickets_(true);
+    var active = data.active.slice();
+    var archived = data.archived.slice();
+    var idx = data.index;
+
+    var inArchive = false;
+    var ticketIdx = -1;
+    for (var i = 0; i < active.length; i++) {
+      if (active[i].id === targetId || String(active[i].protocolo || "").toUpperCase() === targetId.toUpperCase()) {
+        ticketIdx = i;
+        break;
+      }
+    }
+    if (ticketIdx === -1) {
+      for (var j = 0; j < archived.length; j++) {
+        if (archived[j].id === targetId || String(archived[j].protocolo || "").toUpperCase() === targetId.toUpperCase()) {
+          ticketIdx = j;
+          inArchive = true;
+          break;
+        }
+      }
+    }
+    if (ticketIdx === -1) {
+      throw new Error("Chamado não encontrado: " + targetId);
+    }
+
+    var ticket = inArchive ? archived[ticketIdx] : active[ticketIdx];
+    var nowIso = new Date().toISOString();
+    var actor = author || "admin";
+    ticket.historico = Array.isArray(ticket.historico) ? ticket.historico : [];
+    ticket.respostasPublicas = Array.isArray(ticket.respostasPublicas) ? ticket.respostasPublicas : [];
+    ticket.notasInternas = Array.isArray(ticket.notasInternas) ? ticket.notasInternas : [];
+    ticket.linksRelacionados = ticket.linksRelacionados || {
+      commit: "",
+      releaseEventId: "",
+      releaseVersao: "",
+      unidade: ticket.unidade,
+      ambiente: ticket.ambiente,
+      duplicadoDe: ""
+    };
+
+    if (payload.reabrir === true) {
+      if (ticket.estado !== "RESOLVIDO" && ticket.estado !== "ENCERRADO") {
+        throw new Error("Somente chamados RESOLVIDO ou ENCERRADO podem ser reabertos.");
+      }
+      var prevState = ticket.estado;
+      var reopenState = payload.estado && VALID_SUPPORT_STATES.indexOf(String(payload.estado).toUpperCase()) !== -1
+        ? String(payload.estado).toUpperCase()
+        : "EM_ANALISE";
+      if (reopenState === "RESOLVIDO" || reopenState === "ENCERRADO") reopenState = "EM_ANALISE";
+      ticket.estado = reopenState;
+      ticket.resolvidoEm = null;
+      ticket.encerradoEm = null;
+      if (inArchive) {
+        archived.splice(ticketIdx, 1);
+        ticket.arquivado = false;
+        delete ticket.arquivadoEm;
+        active.unshift(ticket);
+        inArchive = false;
+      }
+      ticket.historico.push({
+        id: "hist-" + Date.now() + "-reopen",
+        tipo: "reaberto",
+        deEstado: prevState,
+        paraEstado: reopenState,
+        detalhe: sanitizeSupportText_(payload.justificativa || "Chamado reaberto pela administração.", 220, false),
+        autor: actor,
+        publico: true,
+        criadoEm: nowIso
+      });
+    } else if (payload.estado !== undefined && payload.estado !== null && String(payload.estado).trim() !== "") {
+      var nextEstado = String(payload.estado).trim().toUpperCase();
+      if (VALID_SUPPORT_STATES.indexOf(nextEstado) === -1) {
+        throw new Error("Estado inválido: " + nextEstado);
+      }
+      if (nextEstado !== ticket.estado) {
+        var oldEstado = ticket.estado;
+        ticket.estado = nextEstado;
+        if (nextEstado === "RESOLVIDO") {
+          ticket.resolvidoEm = ticket.resolvidoEm || nowIso;
+          ticket.encerradoEm = null;
+        } else if (nextEstado === "ENCERRADO") {
+          ticket.encerradoEm = nowIso;
+        } else {
+          ticket.resolvidoEm = null;
+          ticket.encerradoEm = null;
+        }
+        ticket.historico.push({
+          id: "hist-" + Date.now() + "-st",
+          tipo: nextEstado === "ENCERRADO" ? "encerrado" : "estado",
+          deEstado: oldEstado,
+          paraEstado: nextEstado,
+          detalhe: sanitizeSupportText_(payload.justificativa || ("Estado alterado de " + oldEstado + " para " + nextEstado + "."), 220, false),
+          autor: actor,
+          publico: true,
+          criadoEm: nowIso
+        });
+      }
+    }
+
+    if (payload.prioridade !== undefined && payload.prioridade !== null && String(payload.prioridade).trim() !== "") {
+      var nextPrio = String(payload.prioridade).trim().toLowerCase();
+      if (VALID_SUPPORT_PRIORITIES.indexOf(nextPrio) === -1) {
+        throw new Error("Prioridade administrativa inválida: " + nextPrio);
+      }
+      if (nextPrio !== ticket.prioridade) {
+        var oldPrio = ticket.prioridade;
+        ticket.prioridade = nextPrio;
+        ticket.historico.push({
+          id: "hist-" + Date.now() + "-pr",
+          tipo: "prioridade",
+          deEstado: null,
+          paraEstado: null,
+          detalhe: "Prioridade alterada de " + oldPrio + " para " + nextPrio + ".",
+          autor: actor,
+          publico: false,
+          criadoEm: nowIso
+        });
+      }
+    }
+
+    if (typeof payload.respostaPublica === "string" && payload.respostaPublica.trim()) {
+      var msgPub = sanitizeSupportText_(payload.respostaPublica, 600, true);
+      if (msgPub) {
+        ticket.respostasPublicas.push({
+          id: "rsp-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          autor: actor,
+          origem: "admin",
+          mensagem: msgPub,
+          criadoEm: nowIso
+        });
+        ticket.historico.push({
+          id: "hist-" + Date.now() + "-pub",
+          tipo: "resposta_publica",
+          deEstado: null,
+          paraEstado: null,
+          detalhe: "Resposta pública registrada pela equipe.",
+          autor: actor,
+          publico: true,
+          criadoEm: nowIso
+        });
+      }
+    }
+
+    if (typeof payload.notaInterna === "string" && payload.notaInterna.trim()) {
+      var msgInt = sanitizeSupportText_(payload.notaInterna, 600, true);
+      if (msgInt) {
+        ticket.notasInternas.push({
+          id: "int-" + Date.now() + "-" + Math.floor(Math.random() * 1000),
+          autor: actor,
+          mensagem: msgInt,
+          criadoEm: nowIso
+        });
+        ticket.historico.push({
+          id: "hist-" + Date.now() + "-int",
+          tipo: "nota_interna",
+          deEstado: null,
+          paraEstado: null,
+          detalhe: "Nota interna administrativa adicionada.",
+          autor: actor,
+          publico: false,
+          criadoEm: nowIso
+        });
+      }
+    }
+
+    if (payload.linksRelacionados && typeof payload.linksRelacionados === "object") {
+      var lr = payload.linksRelacionados;
+      var nextUnit = lr.unidade ? String(lr.unidade).trim().toUpperCase() : ticket.unidade;
+      var nextEnv = lr.ambiente ? String(lr.ambiente).trim().toUpperCase() : ticket.ambiente;
+      if (VALID_UNITS.indexOf(nextUnit) === -1) throw new Error("Unidade inválida: " + nextUnit);
+      if (VALID_ENVS.indexOf(nextEnv) === -1) throw new Error("Ambiente inválido: " + nextEnv);
+      if (ticket.modulo === "APAC" && nextUnit !== "PEPOA") {
+        throw new Error("Chamado do módulo APAC só pode estar vinculado à unidade PEPOA.");
+      }
+
+      var dup = lr.duplicadoDe !== undefined ? sanitizeSupportText_(lr.duplicadoDe, 40, false).toUpperCase() : ticket.linksRelacionados.duplicadoDe;
+      if (dup) {
+        if (dup === ticket.protocolo || dup === ticket.id.toUpperCase()) {
+          throw new Error("Um chamado não pode ser marcado como duplicata de si mesmo.");
+        }
+        var targetExists = data.all.some(function (x) {
+          return String(x.protocolo || "").toUpperCase() === dup || String(x.id || "").toUpperCase() === dup;
+        });
+        if (!targetExists) {
+          throw new Error("Chamado de referência para duplicata não encontrado: " + dup);
+        }
+      }
+
+      ticket.unidade = nextUnit;
+      ticket.ambiente = nextEnv;
+      ticket.linksRelacionados = {
+        commit: lr.commit !== undefined ? sanitizeSupportText_(lr.commit, 64, false) : (ticket.linksRelacionados.commit || ""),
+        releaseEventId: lr.releaseEventId !== undefined ? sanitizeSupportText_(lr.releaseEventId, 120, false) : (ticket.linksRelacionados.releaseEventId || ""),
+        releaseVersao: lr.releaseVersao !== undefined ? sanitizeSupportText_(lr.releaseVersao, 40, false) : (ticket.linksRelacionados.releaseVersao || ""),
+        unidade: nextUnit,
+        ambiente: nextEnv,
+        duplicadoDe: dup || ""
+      };
+      ticket.historico.push({
+        id: "hist-" + Date.now() + "-lnk",
+        tipo: "link_atualizado",
+        deEstado: null,
+        paraEstado: null,
+        detalhe: "Vínculos técnicos atualizados" + (dup ? (" (duplicata de " + dup + ")") : "") + ".",
+        autor: actor,
+        publico: true,
+        criadoEm: nowIso
+      });
+    }
+
+    if (payload.arquivar === true && !inArchive) {
+      if (ticket.estado !== "RESOLVIDO" && ticket.estado !== "ENCERRADO") {
+        throw new Error("Somente chamados RESOLVIDO ou ENCERRADO podem ser arquivados.");
+      }
+      var pos = active.indexOf(ticket);
+      if (pos !== -1) active.splice(pos, 1);
+      ticket.arquivado = true;
+      ticket.arquivadoEm = nowIso;
+      archived.unshift(ticket);
+      inArchive = true;
+    }
+
+    ticket.atualizadoEm = nowIso;
+
+    var actWrite = writeTicketSegmentsLocked_(
+      props,
+      PROP_KEYS.SUPPORT_SEG_PREFIX,
+      active,
+      settings.maxActiveSegments,
+      settings.maxTicketsPerSegment,
+      idx.segments
+    );
+    if (!actWrite.ok) {
+      throw new Error("Limite de segmentos ativos atingido ao salvar alteração.");
+    }
+
+    var archWrite = writeTicketSegmentsLocked_(
+      props,
+      PROP_KEYS.SUPPORT_ARCH_PREFIX,
+      archived,
+      settings.maxArchiveSegments,
+      settings.maxTicketsPerSegment,
+      idx.archiveSegments
+    );
+    if (!archWrite.ok) {
+      throw new Error("Limite de segmentos de arquivo atingido.");
+    }
+
+    idx.segments = actWrite.keys;
+    idx.archiveSegments = archWrite.keys;
+    props.setProperty(PROP_KEYS.SUPPORT_INDEX, JSON.stringify(idx));
+
+    return {
+      success: true,
+      ticket: buildAdminTicketView_(ticket),
+      message: "Chamado " + ticket.protocolo + " atualizado."
+    };
+  });
+}
+
+function buildSupportMarkdownExport_(tickets, options) {
+  var opts = options && typeof options === "object" ? options : {};
+  var includeInternal = opts.includeInternalNotes !== false;
+  var nowStr = Utilities.formatDate ? (function () {
+    try {
+      return Utilities.formatDate(new Date(), "America/Sao_Paulo", "yyyy-MM-dd HH:mm");
+    } catch (e) {
+      return new Date().toISOString();
+    }
+  })() : new Date().toISOString();
+
+  var lines = [];
+  lines.push("# Exportação Administrativa — Central de Suporte SISFAR");
+  lines.push("");
+  lines.push("- **Gerado em:** " + nowStr + " (America/Sao_Paulo)");
+  lines.push("- **Total de chamados selecionados:** " + tickets.length);
+  lines.push("");
+
+  for (var i = 0; i < tickets.length; i++) {
+    var t = tickets[i];
+    var ctx = t.versaoContexto || {};
+    var links = t.linksRelacionados || {};
+    var verText = ctx.confirmadaPorRelease && ctx.versao
+      ? ("v" + ctx.versao + (ctx.deploymentVersion ? (" (@" + String(ctx.deploymentVersion).replace(/^@/, "") + ")") : "") + (ctx.commit ? (" · commit `" + ctx.commit + "`") : "") + (ctx.estadoHomologacao ? (" · " + ctx.estadoHomologacao) : ""))
+      : "Sem release confirmada no portal para este ambiente";
+
+    lines.push("---");
+    lines.push("");
+    lines.push("## " + t.protocolo + " — " + t.titulo);
+    lines.push("");
+    lines.push("- **ID Interno:** `" + t.id + "`");
+    lines.push("- **Categoria:** " + t.categoria);
+    lines.push("- **Estado:** `" + t.estado + "`");
+    lines.push("- **Prioridade Administrativa:** `" + t.prioridade + "`");
+    lines.push("- **Unidade / Ambiente:** " + t.unidade + " / " + t.ambiente);
+    lines.push("- **Módulo:** " + t.modulo);
+    lines.push("- **Versão / Deployment Confirmados (Backend):** " + verText);
+    if (t.impactoInformado) {
+      lines.push("- **Impacto Informado:** " + t.impactoInformado);
+    }
+    lines.push("- **Criado em:** " + t.criadoEm);
+    lines.push("- **Atualizado em:** " + t.atualizadoEm);
+    if (t.resolvidoEm) lines.push("- **Resolvido em:** " + t.resolvidoEm);
+    if (t.encerradoEm) lines.push("- **Encerrado em:** " + t.encerradoEm);
+    if (t.solicitante && t.solicitante.nome) {
+      lines.push("- **Solicitante (identificado):** " + t.solicitante.nome + " (`" + (t.solicitante.metodoAuth || "verificado") + "`)");
+    }
+    lines.push("");
+
+    lines.push("### Descrição / Contexto do Problema");
+    lines.push("");
+    lines.push(t.descricao);
+    lines.push("");
+
+    if (t.observado) {
+      lines.push("### Comportamento Observado");
+      lines.push("");
+      lines.push(t.observado);
+      lines.push("");
+    }
+    if (t.esperado) {
+      lines.push("### Comportamento / Melhoria Esperada");
+      lines.push("");
+      lines.push(t.esperado);
+      lines.push("");
+    }
+    if (t.passosReproduzir) {
+      lines.push("### Passos para Reproduzir");
+      lines.push("");
+      lines.push(t.passosReproduzir);
+      lines.push("");
+    }
+
+    var evidenceLines = [];
+    if (ctx.deploymentId) evidenceLines.push("- Deployment ID confirmado: `" + ctx.deploymentId + "`");
+    if (links.commit) evidenceLines.push("- Commit relacionado: `" + links.commit + "`");
+    if (links.releaseVersao) evidenceLines.push("- Release relacionada: `v" + links.releaseVersao + "`" + (links.releaseEventId ? (" (evento `" + links.releaseEventId + "`)") : ""));
+    if (links.duplicadoDe) evidenceLines.push("- Marcado como duplicata de: `" + links.duplicadoDe + "`");
+    if (Array.isArray(t.respostasPublicas) && t.respostasPublicas.length > 0) {
+      evidenceLines.push("- Respostas públicas registradas: " + t.respostasPublicas.length);
+    }
+
+    if (evidenceLines.length > 0) {
+      lines.push("### Evidências e Vínculos Derivados");
+      lines.push("");
+      for (var ev = 0; ev < evidenceLines.length; ev++) lines.push(evidenceLines[ev]);
+      lines.push("");
+    }
+
+    if (t.esperado) {
+      lines.push("### Critérios de Aceite (Derivados do Esperado Informado)");
+      lines.push("");
+      lines.push("- [ ] Confirmar atendimento ao comportamento esperado informado: " + t.esperado.replace(/\n+/g, " "));
+      lines.push("");
+    }
+
+    if (Array.isArray(t.respostasPublicas) && t.respostasPublicas.length > 0) {
+      lines.push("### Respostas Públicas");
+      lines.push("");
+      for (var rp = 0; rp < t.respostasPublicas.length; rp++) {
+        var rItem = t.respostasPublicas[rp];
+        lines.push("- **" + (rItem.autor || "Equipe") + "** (" + rItem.criadoEm + "): " + rItem.mensagem.replace(/\n+/g, " "));
+      }
+      lines.push("");
+    }
+
+    if (includeInternal && Array.isArray(t.notasInternas) && t.notasInternas.length > 0) {
+      lines.push("### Notas Internas (Uso Administrativo)");
+      lines.push("");
+      for (var ni = 0; ni < t.notasInternas.length; ni++) {
+        var nItem = t.notasInternas[ni];
+        lines.push("- **" + (nItem.autor || "Admin") + "** (" + nItem.criadoEm + "): " + nItem.mensagem.replace(/\n+/g, " "));
+      }
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function exportAdminSupportTicketsInternal_(ticketIds, format, options) {
+  if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+    throw new Error("Selecione ao menos um chamado para exportar.");
+  }
+  if (ticketIds.length > 50) {
+    throw new Error("Limite máximo de 50 chamados por exportação.");
+  }
+  var fmt = String(format || "markdown").trim().toLowerCase();
+  if (fmt !== "markdown" && fmt !== "md" && fmt !== "json") {
+    throw new Error("Formato de exportação inválido. Use 'markdown' ou 'json'.");
+  }
+
+  var data = getAllSupportTickets_(true);
+  var byKey = {};
+  for (var i = 0; i < data.all.length; i++) {
+    var item = data.all[i];
+    byKey[item.id] = item;
+    if (item.protocolo) byKey[String(item.protocolo).toUpperCase()] = item;
+  }
+
+  var selected = [];
+  var seenIds = {};
+  for (var s = 0; s < ticketIds.length; s++) {
+    var key = String(ticketIds[s] || "").trim();
+    var found = byKey[key] || byKey[key.toUpperCase()];
+    if (found && !seenIds[found.id]) {
+      seenIds[found.id] = true;
+      selected.push(buildAdminTicketView_(found));
+    }
+  }
+
+  if (selected.length === 0) {
+    throw new Error("Nenhum dos chamados selecionados foi encontrado.");
+  }
+
+  if (fmt === "json") {
+    var jsonPayload = {
+      schemaVersion: "2.2",
+      portalVersion: PORTAL_VERSION,
+      generatedAt: new Date().toISOString(),
+      count: selected.length,
+      tickets: selected
+    };
+    return {
+      success: true,
+      format: "json",
+      count: selected.length,
+      content: JSON.stringify(jsonPayload, null, 2),
+      filename: "sisfar-suporte-export-" + getTodayIsoSaoPaulo_() + ".json"
+    };
+  }
+
+  return {
+    success: true,
+    format: "markdown",
+    count: selected.length,
+    content: buildSupportMarkdownExport_(selected, options),
+    filename: "sisfar-suporte-export-" + getTodayIsoSaoPaulo_() + ".md"
+  };
+}
+
+function getSupportStorageStats_() {
+  var props = getProps_();
+  var idx = getSupportIndex_();
+  var fixedKeys = [
+    PROP_KEYS.SUPPORT_SETTINGS,
+    PROP_KEYS.SUPPORT_AUTH_HASH,
+    PROP_KEYS.SUPPORT_AUTH_SALT,
+    PROP_KEYS.SUPPORT_INVITES,
+    PROP_KEYS.SUPPORT_INDEX,
+    PROP_KEYS.SUPPORT_DEDUPE
+  ];
+  var keys = fixedKeys.concat(idx.segments || []).concat(idx.archiveSegments || []);
+  var totalBytes = 0;
+  var breakdown = [];
+  for (var i = 0; i < keys.length; i++) {
+    var raw = props.getProperty(keys[i]) || "";
+    var bytes = getUtf8ByteLength_(raw);
+    totalBytes += bytes;
+    if (bytes > 0) breakdown.push({ key: keys[i], bytes: bytes });
+  }
+
+  // Estimate overall project PropertiesService usage considering all other portal properties
+  var otherFixed = [
+    PROP_KEYS.CONFIG_LINKS,
+    PROP_KEYS.CONFIG_UPDATED_AT,
+    PROP_KEYS.CONFIG_UPDATED_BY,
+    PROP_KEYS.ADMIN_EMAILS,
+    PROP_KEYS.ADMIN_AUTH_HASH,
+    PROP_KEYS.ADMIN_AUTH_SALT,
+    PROP_KEYS.WEBHOOK_SECRET,
+    PROP_KEYS.RELEASE_STATE,
+    PROP_KEYS.RELEASE_HIST_META,
+    PROP_KEYS.RELEASE_DEDUPE,
+    PROP_KEYS.ANNOUNCEMENTS_META,
+    PROP_KEYS.PORTAL_SETTINGS
+  ];
+  var relMeta = getReleaseHistMeta_();
+  var annMeta = getAnnouncementsMeta_();
+  var monStats = getMonitoringStorageStats_();
+  var otherBytes = monStats.totalBytes || 0;
+  var otherKeys = otherFixed.concat(relMeta.segments || []).concat(annMeta.segments || []);
+  for (var ok = 0; ok < otherKeys.length; ok++) {
+    otherBytes += getUtf8ByteLength_(props.getProperty(otherKeys[ok]) || "");
+  }
+
+  return {
+    supportTotalBytes: totalBytes,
+    otherModulesTotalBytes: otherBytes,
+    projectEstimatedTotalBytes: totalBytes + otherBytes,
+    gasProjectQuotaBytes: 512000,
+    maxPerPropertyBytes: MAX_PROPERTY_BYTES,
+    activeSegmentsCount: (idx.segments || []).length,
+    archiveSegmentsCount: (idx.archiveSegments || []).length,
+    totalEverCreated: idx.totalEverCreated || 0,
+    lastCleanupAt: idx.lastCleanupAt || null,
+    breakdown: breakdown
+  };
+}
+
+function getPublicSupportConfig_() {
+  var settings = getSupportSettings_();
+  var googleEmail = getActiveGoogleEmail_();
+  return {
+    enabled: settings.enabled,
+    allowGoogleSession: settings.allowGoogleSession,
+    googleEmailDetected: Boolean(googleEmail),
+    googleEmail: googleEmail || "",
+    credentialConfigured: isSupportCredentialConfigured_(),
+    activeInvitesAvailable: getActiveSupportInvitesCount_() > 0,
+    accessReady: isSupportAccessMethodAvailable_(),
+    categories: VALID_SUPPORT_CATEGORIES.slice(),
+    modules: VALID_SUPPORT_MODULES.slice(),
+    impacts: VALID_SUPPORT_IMPACTS.slice(),
+    units: VALID_UNITS.slice(),
+    envs: VALID_ENVS.slice(),
+    states: VALID_SUPPORT_STATES.slice(),
+    apacUnit: "PEPOA",
+    portalVersion: PORTAL_VERSION
+  };
+}
+
+function buildAdminSupportPayload_() {
+  var settings = getSupportSettings_();
+  var data = getAllSupportTickets_(true);
+  var activeViews = data.active.map(buildAdminTicketView_);
+  var archivedViews = data.archived.map(buildAdminTicketView_);
+
+  var kpis = {
+    abertos: 0,
+    emAnalise: 0,
+    criticos: 0,
+    emDesenvolvimento: 0,
+    resolvidos: 0,
+    encerrados: 0,
+    sugestoesPendentes: 0,
+    arquivados: archivedViews.length,
+    totalAtivos: activeViews.length
+  };
+
+  for (var i = 0; i < activeViews.length; i++) {
+    var t = activeViews[i];
+    var isOpen = t.estado !== "RESOLVIDO" && t.estado !== "ENCERRADO";
+    if (isOpen) kpis.abertos++;
+    if (t.estado === "EM_ANALISE") kpis.emAnalise++;
+    if (t.estado === "EM_DESENVOLVIMENTO") kpis.emDesenvolvimento++;
+    if (t.estado === "RESOLVIDO") kpis.resolvidos++;
+    if (t.estado === "ENCERRADO") kpis.encerrados++;
+    if (isOpen && t.prioridade === "crítica") kpis.criticos++;
+    if (isOpen && t.categoria === "Sugestão de melhoria") kpis.sugestoesPendentes++;
+  }
+
+  var invites = getSupportInvitesRaw_().map(function (inv) {
+    return {
+      id: inv.id,
+      rotulo: inv.rotulo,
+      unidade: inv.unidade,
+      codePrefix: inv.codePrefix,
+      criadoEm: inv.criadoEm,
+      expiraEm: inv.expiraEm,
+      maxUsos: inv.maxUsos,
+      usos: inv.usos,
+      ativo: inv.ativo,
+      criadoPor: inv.criadoPor
+    };
+  });
+
+  return {
+    schemaVersion: "2.2",
+    kpis: kpis,
+    tickets: activeViews,
+    archivedTickets: archivedViews,
+    settings: settings,
+    supportCredentialConfigured: isSupportCredentialConfigured_(),
+    invites: invites,
+    storageStats: getSupportStorageStats_()
+  };
+}
+
 /* ==================== BOOTSTRAP PÚBLICO E ENDPOINTS ==================== */
 
 function getPublicBootstrapPayload_() {
@@ -2728,6 +4510,7 @@ function getPublicBootstrapPayload_() {
   var announcements = getPublicActiveAnnouncements_();
   var settings = getPortalSettings_();
   var monitoring = buildMonitoringPayload_(false);
+  var supportConfig = getPublicSupportConfig_();
 
   return {
     success: true,
@@ -2740,6 +4523,7 @@ function getPublicBootstrapPayload_() {
     announcements: announcements,
     settings: settings,
     monitoring: monitoring,
+    supportConfig: supportConfig,
     serverNow: new Date().toISOString()
   };
 }
@@ -2776,7 +4560,14 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  return renderPortalHtml();
+  var initialView = "inicio";
+  if (params.view === "suporte" || params.tab === "suporte") {
+    initialView = "suporte";
+  } else if (params.view === "status" || params.view === "atualizacoes" || params.view === "comunicados") {
+    initialView = params.view;
+  }
+
+  return renderPortalHtml(initialView);
 }
 
 function apiGetPublicConfig() {
@@ -2789,6 +4580,18 @@ function apiGetPublicConfig() {
 
 function apiGetPublicBootstrap() {
   return getPublicBootstrapPayload_();
+}
+
+function apiCreateSupportTicket(payload) {
+  return createSupportTicketInternal_(payload);
+}
+
+function apiLookupSupportTicket(protocolo, trackingToken) {
+  return lookupSupportTicketInternal_(protocolo, trackingToken);
+}
+
+function apiAddPublicSupportReply(protocolo, trackingToken, mensagem) {
+  return addPublicSupportReplyInternal_(protocolo, trackingToken, mensagem);
 }
 
 function verifyWebhookPostAuth_(body) {
@@ -2899,6 +4702,31 @@ function doPost(e) {
     }
   }
 
+  if (body && typeof body.action === "string" && body.action.indexOf("support_") === 0) {
+    try {
+      var supRes;
+      if (body.action === "support_create") {
+        supRes = apiCreateSupportTicket(body.payload || body);
+      } else if (body.action === "support_lookup") {
+        supRes = apiLookupSupportTicket(body.protocolo, body.trackingToken || body.token);
+      } else if (body.action === "support_reply") {
+        supRes = apiAddPublicSupportReply(body.protocolo, body.trackingToken || body.token, body.mensagem);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: "Ação de suporte desconhecida: " + body.action
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      return ContentService.createTextOutput(JSON.stringify(supRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (supErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: supErr.message || String(supErr)
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   if (body && typeof body.action === "string" && body.action.indexOf("admin_") === 0) {
     try {
       var adminAction = body.action;
@@ -2925,6 +4753,18 @@ function doPost(e) {
         adminRes = apiRunManualMonitoringCheck(body.authToken);
       } else if (adminAction === "admin_monitoring_sync_trigger") {
         adminRes = apiSyncMonitoringTrigger(body.authToken);
+      } else if (adminAction === "admin_support_update") {
+        adminRes = apiUpdateAdminSupportTicket(body.payload, body.authToken);
+      } else if (adminAction === "admin_support_export") {
+        adminRes = apiExportAdminSupportTickets(body.ticketIds, body.format, body.options, body.authToken);
+      } else if (adminAction === "admin_support_save_settings") {
+        adminRes = apiSaveAdminSupportSettings(body.payload, body.authToken);
+      } else if (adminAction === "admin_support_create_invite") {
+        adminRes = apiCreateAdminSupportInvite(body.payload, body.authToken);
+      } else if (adminAction === "admin_support_revoke_invite") {
+        adminRes = apiRevokeAdminSupportInvite(body.id, body.authToken);
+      } else if (adminAction === "admin_support_run_retention") {
+        adminRes = apiRunAdminSupportRetention(body.payload, body.authToken);
       } else {
         return ContentService.createTextOutput(JSON.stringify({
           success: false,
@@ -3035,10 +4875,13 @@ function apiGetAdminBootstrap(authToken) {
     announcements: getAllAnnouncements_(),
     settings: getPortalSettings_(),
     monitoring: buildMonitoringPayload_(true),
+    support: buildAdminSupportPayload_(),
     securityStatus: {
       adminEmails: getAdminAllowlist(),
       webhookSecretConfigured: Boolean(props.getProperty(PROP_KEYS.WEBHOOK_SECRET)),
       adminPasscodeConfigured: isAdminPasscodeConfigured_(),
+      supportCredentialConfigured: isSupportCredentialConfigured_(),
+      activeSupportInvitesCount: getActiveSupportInvitesCount_(),
       googleEmailDetected: Boolean(getActiveGoogleEmail_())
     }
   };
@@ -3158,10 +5001,49 @@ function apiSyncMonitoringTrigger(authToken) {
   return res;
 }
 
+function apiUpdateAdminSupportTicket(payload, authToken) {
+  var auth = requireAdminAuth_(authToken);
+  return updateAdminSupportTicketInternal_(payload, auth.email);
+}
+
+function apiExportAdminSupportTickets(ticketIds, format, options, authToken) {
+  requireAdminAuth_(authToken);
+  return exportAdminSupportTicketsInternal_(ticketIds, format, options);
+}
+
+function apiSaveAdminSupportSettings(payload, authToken) {
+  var auth = requireAdminAuth_(authToken);
+  return saveSupportSettingsInternal_(payload, auth.email);
+}
+
+function apiCreateAdminSupportInvite(payload, authToken) {
+  var auth = requireAdminAuth_(authToken);
+  return createSupportInviteInternal_(payload, auth.email);
+}
+
+function apiRevokeAdminSupportInvite(inviteId, authToken) {
+  var auth = requireAdminAuth_(authToken);
+  return revokeSupportInviteInternal_(inviteId, auth.email);
+}
+
+function apiRunAdminSupportRetention(payload, authToken) {
+  requireAdminAuth_(authToken);
+  var opts = payload && typeof payload === "object" ? payload : {};
+  return withScriptLock_(function () {
+    var props = getProps_();
+    var settings = getSupportSettings_();
+    var res = runSupportRetentionLocked_(props, settings, Date.now(), opts.overrideCloseDays);
+    res.storageStats = getSupportStorageStats_();
+    res.message = "Retenção/arquivamento executado: " + res.newlyArchived + " arquivado(s), " + res.purgedArchived + " expirado(s) removido(s).";
+    return res;
+  });
+}
+
 /* ==================== RENDERIZAÇÃO HTMLSERVICE ==================== */
 
-function renderPortalHtml() {
+function renderPortalHtml(initialView) {
   var payload = getPublicBootstrapPayload_();
+  payload.initialView = initialView || "inicio";
   var adminUrl = buildAppViewUrl("view=admin");
   var safeAdminUrl = escapeHtmlAttr(adminUrl);
   var template = readHtmlTemplate_("Portal");

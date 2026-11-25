@@ -1638,3 +1638,572 @@ test('A leitura legado omite duração sem origem e corrige redirecionamento agr
   assert.equal(monitoring.daily[day].cppaOficial.unknown, 4);
   assert.match(gas.store[key], /9000/);
 });
+
+/* ==================== TESTES 2.2 — CENTRAL DE SUPORTE, OCORRÊNCIAS E SUGESTÕES ==================== */
+
+test('Suporte 2.2: acesso verificado (credencial/convite/sessão Google), bloqueio anônimo e regra APAC exclusiva PEPOA', () => {
+  const gas = createGasContext({ userEmail: '' });
+
+  // Sem credencial configurada e sem e-mail Google -> fail-closed
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Login',
+    titulo: 'Erro sem credencial',
+    descricao: 'Tentativa anônima irrestrita deve falhar imediatamente.',
+    solicitanteNome: 'Operador Teste',
+    confirmacaoSemDadosClinicos: true
+  }), /403 Não Autorizado/);
+
+  // Admin configura credencial de suporte distinta do admin e HMAC
+  gas.setUserEmail('lukaslaurino@gmail.com');
+  gas.ctx.apiSaveAdminSettings({
+    newAdminPasscode: 'AdminPass123456',
+    newWebhookSecret: 'WebhookSecret1234567890'
+  });
+
+  // Tentativa de definir credencial igual ao admin ou HMAC deve ser bloqueada
+  assert.throws(() => gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'AdminPass123456' }), /distinta da chave administrativa/);
+  assert.throws(() => gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'WebhookSecret1234567890' }), /distinta do segredo HMAC/);
+
+  const supCfgRes = gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'SuporteSisfar2026' });
+  assert.equal(supCfgRes.success, true);
+  assert.equal(supCfgRes.supportCredentialConfigured, true);
+
+  // Credencial de suporte não pode autenticar como admin
+  assert.throws(() => gas.ctx.apiAdminAuthenticate('lukaslaurino@gmail.com', 'SuporteSisfar2026'), /Credencial administrativa inválida/);
+
+  // Registrar uma release na PEPOA AUDIT para verificar confirmação backend
+  gas.ctx.apiRecordAdminReleaseEvent({
+    schemaVersion: '2.0',
+    eventId: 'evt-sup-rel-1',
+    unidade: 'PEPOA',
+    ambiente: 'AUDIT',
+    tipoEvento: 'publish',
+    versao: '4.39.2',
+    commit: 'abc1234',
+    deploymentVersion: '210',
+    deploymentId: 'AKfycb_PEPOA_AUDIT_DEP',
+    url: gas.ctx.getConfig().pepoaAudit.url,
+    publicadoEm: new Date().toISOString(),
+    estadoHomologacao: 'EM_HOMOLOGACAO'
+  });
+
+  // Gerar convite restrito à PEPOA com limite de 1 uso
+  const invRes = gas.ctx.apiCreateAdminSupportInvite({
+    rotulo: 'Equipe PEPOA',
+    unidade: 'PEPOA',
+    diasValidade: 7,
+    maxUsos: 1
+  });
+  assert.equal(invRes.success, true);
+  assert.ok(invRes.inviteCode.startsWith('SUP-INV-'));
+
+  // Usuário público sem Google email
+  gas.setUserEmail('');
+
+  // Admin passcode / HMAC secret não funcionam no suporte
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Login',
+    titulo: 'Tentativa com admin key',
+    descricao: 'Chave admin não deve abrir chamado público.',
+    solicitanteNome: 'Tester',
+    supportCode: 'AdminPass123456',
+    confirmacaoSemDadosClinicos: true
+  }), /403 Não Autorizado/);
+
+  // APAC bloqueado para CPPA e MADRE
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'APAC',
+    titulo: 'Erro APAC na CPPA',
+    descricao: 'Módulo APAC não pertence à unidade CPPA.',
+    solicitanteNome: 'Farmacêutico CPPA',
+    supportCode: 'SuporteSisfar2026',
+    confirmacaoSemDadosClinicos: true
+  }), /APAC é pertinente exclusivamente à unidade PEPOA/);
+
+  // Convite restrito à PEPOA rejeitado na CPPA
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    categoria: 'Solicitação de suporte',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Dashboard',
+    titulo: 'Convite em unidade errada',
+    descricao: 'Convite da PEPOA não pode ser usado na CPPA.',
+    solicitanteNome: 'Operador CPPA',
+    supportCode: invRes.inviteCode,
+    confirmacaoSemDadosClinicos: true
+  }), /Convite restrito à unidade PEPOA/);
+
+  // Convite válido na PEPOA + módulo APAC funciona e confirma release backend (ignorando versão forjada do cliente)
+  const created = gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'PEPOA',
+    ambiente: 'AUDIT',
+    modulo: 'APAC',
+    titulo: 'Divergência no filtro de relatório APAC',
+    descricao: 'Ao filtrar por período de 30 dias no módulo APAC, a contagem total exibe valor antigo.',
+    observado: 'Total exibido permanece do filtro anterior',
+    esperado: 'Total deve atualizar conforme período selecionado',
+    impactoInformado: 'Moderado',
+    versaoContexto: { versao: '9.9.9-FORJADA' },
+    solicitanteNome: 'Farmacêutica PEPOA',
+    supportCode: invRes.inviteCode,
+    confirmacaoSemDadosClinicos: true
+  });
+  assert.equal(created.success, true);
+  assert.match(created.protocolo, /^SUP-\d{8}-[A-Z0-9]{6}$/);
+  assert.ok(created.trackingToken.startsWith('stk_'));
+  assert.equal(created.ticket.versaoContexto.versao, '4.39.2');
+  assert.equal(created.ticket.versaoContexto.deploymentVersion, '210');
+  assert.equal(created.ticket.versaoContexto.confirmadaPorRelease, true);
+
+  // Token em texto claro nunca deve ser persistido no store
+  const allStoreText = JSON.stringify(gas.store);
+  assert.equal(allStoreText.includes(created.trackingToken), false);
+
+  // Bootstrap público nunca inclui lista de chamados
+  const boot = JSON.parse(gas.ctx.doGet({ parameter: { action: 'bootstrap' } }).getContent());
+  assert.equal(boot.tickets, undefined);
+  assert.ok(boot.supportConfig);
+  assert.equal(boot.supportConfig.apacUnit, 'PEPOA');
+
+  // 2ª tentativa com o mesmo convite (maxUsos=1) deve falhar
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    categoria: 'Outros',
+    unidade: 'PEPOA',
+    ambiente: 'AUDIT',
+    modulo: 'APAC',
+    titulo: 'Segundo uso de convite esgotado',
+    descricao: 'Convite com limite de 1 uso deve bloquear a segunda chamada.',
+    solicitanteNome: 'Farmacêutica PEPOA',
+    supportCode: invRes.inviteCode,
+    confirmacaoSemDadosClinicos: true
+  }), /Limite de usos do convite/);
+});
+
+test('Suporte 2.2: validação de payload inválido, privacidade clínica, anexos, limites e sanitização XSS', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'CredSuporte01' });
+  gas.setUserEmail('');
+
+  const base = {
+    categoria: 'Erro de sistema',
+    unidade: 'MADRE',
+    ambiente: 'OFICIAL',
+    modulo: 'Dispensação',
+    titulo: 'Falha válida de teste',
+    descricao: 'Descrição válida suficiente para validação inicial do formulário.',
+    solicitanteNome: 'Equipe MADRE',
+    supportCode: 'CredSuporte01',
+    confirmacaoSemDadosClinicos: true
+  };
+
+  // Sem confirmação explícita de ausência de dados clínicos
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, confirmacaoSemDadosClinicos: false }), /Confirme explicitamente/);
+
+  // Com anexos ou base64
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, anexos: ['a.png'] }), /Anexos e arquivos não são permitidos/);
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, descricao: 'Print: data:image/png;base64,AAAA123456' }), /base64/);
+
+  // Com CPF formatado ou identificador INFOPEN/prontuário
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, descricao: 'Paciente CPF 123.456.789-00 com erro' }), /CPF/);
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, descricao: 'Verificar prontuário: 99887766 urgente' }), /identificadores individuais/);
+
+  // Honeypot preenchido
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, website: 'http://spam.example' }), /anti-spam/);
+
+  // Categoria, módulo, título curto e descrição gigante
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, categoria: 'Inexistente' }), /Categoria inválida/);
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, modulo: 'Invalido' }), /Módulo inválido/);
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, titulo: 'Oi' }), /Título deve ter/);
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({ ...base, descricao: 'x'.repeat(13000) }), /excede o tamanho máximo/);
+
+  // Sanitização XSS mantendo texto legível
+  const xssRes = gas.ctx.apiCreateSupportTicket({
+    ...base,
+    titulo: 'Erro <script>alert(1)</script>tempo < 3s',
+    descricao: 'Ao clicar <img src=x onerror=alert(2)> ocorre javascript:alert(3) na tela.',
+    observado: '<svg onload=alert(4)>Falha visual</svg> e valor < 10'
+  });
+  assert.equal(xssRes.success, true);
+  assert.equal(xssRes.ticket.titulo.includes('<script>'), false);
+  assert.equal(xssRes.ticket.descricao.includes('onerror='), false);
+  assert.equal(xssRes.ticket.descricao.includes('javascript:'), false);
+  assert.equal(xssRes.ticket.observado.includes('<svg'), false);
+  assert.ok(xssRes.ticket.observado.includes('< 10'));
+});
+
+test('Suporte 2.2: idempotência por clientRequestId e rate limiting de criação e consulta', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'CredRate2026' });
+  gas.setUserEmail('');
+
+  const payload = {
+    categoria: 'Lentidão',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Consultas',
+    titulo: 'Lentidão na consulta de estoque',
+    descricao: 'Consulta demora acima de 10 segundos no início do turno.',
+    solicitanteNome: 'Operador CPPA',
+    supportCode: 'CredRate2026',
+    confirmacaoSemDadosClinicos: true,
+    clientRequestId: 'req-idemp-123456'
+  };
+
+  const first = gas.ctx.apiCreateSupportTicket(payload);
+  const second = gas.ctx.apiCreateSupportTicket(payload);
+  assert.equal(first.duplicate, false);
+  assert.equal(second.duplicate, true);
+  assert.equal(second.protocolo, first.protocolo);
+
+  // Rate limit: até 5 criações por 10 min por credencial+unidade; a 6ª deve bloquear (429)
+  for (let i = 2; i <= 5; i++) {
+    const r = gas.ctx.apiCreateSupportTicket({
+      ...payload,
+      titulo: `Chamado sequencial ${i}`,
+      clientRequestId: `req-rate-${i}-abcdef`
+    });
+    assert.equal(r.success, true);
+  }
+  assert.throws(() => gas.ctx.apiCreateSupportTicket({
+    ...payload,
+    titulo: 'Chamado 6 excedendo limite',
+    clientRequestId: 'req-rate-6-abcdef'
+  }), /429 Limite de frequência/);
+
+  // Rate limit de consultas falhas no mesmo protocolo (máx 10 tentativas)
+  for (let a = 1; a <= 10; a++) {
+    assert.throws(() => gas.ctx.apiLookupSupportTicket(first.protocolo, 'stk_token_invalido_1234567890'), /Chamado não encontrado ou token/);
+  }
+  assert.throws(() => gas.ctx.apiLookupSupportTicket(first.protocolo, 'stk_token_invalido_1234567890'), /429 Muitas tentativas inválidas/);
+});
+
+test('Suporte 2.2: consulta individual, privacidade de notas internas, ciclo de estados e não-encerramento por release', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'CredPriv2026' });
+  gas.setUserEmail('');
+
+  const t1 = gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'PEPOA',
+    ambiente: 'OFICIAL',
+    modulo: 'Prescrições',
+    titulo: 'Erro ao salvar ajuste de horário',
+    descricao: 'Tela exibe mensagem inesperada ao confirmar ajuste.',
+    esperado: 'Ajuste deve ser salvo sem erro.',
+    solicitanteNome: 'Farmacêutico A',
+    supportCode: 'CredPriv2026',
+    confirmacaoSemDadosClinicos: true
+  });
+
+  const t2 = gas.ctx.apiCreateSupportTicket({
+    categoria: 'Sugestão de melhoria',
+    unidade: 'MADRE',
+    ambiente: 'AUDIT',
+    modulo: 'Relatórios',
+    titulo: 'Filtro por turno em relatório',
+    descricao: 'Permitir filtrar relatório de dispensação por turno diurno/noturno.',
+    solicitanteNome: 'Farmacêutica B',
+    supportCode: 'CredPriv2026',
+    confirmacaoSemDadosClinicos: true
+  });
+
+  // Escrita admin não autorizada (anônimo) bloqueada via RPC e via doPost
+  assert.throws(() => gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, estado: 'ENCERRADO' }), /Acesso negado/);
+  assert.throws(() => gas.ctx.apiExportAdminSupportTickets([t1.ticketId], 'markdown'), /Acesso negado/);
+  const unauthPost = JSON.parse(gas.ctx.doPost({
+    postData: { contents: JSON.stringify({ action: 'admin_support_update', payload: { id: t1.ticketId, estado: 'ENCERRADO' } }) }
+  }).getContent());
+  assert.equal(unauthPost.success, false);
+  assert.match(unauthPost.error, /Acesso negado/);
+
+  // Token de t2 não consulta t1
+  assert.throws(() => gas.ctx.apiLookupSupportTicket(t1.protocolo, t2.trackingToken), /Chamado não encontrado ou token/);
+
+  // Admin executa ciclo de vida, nota interna, resposta pública e vínculos
+  gas.setUserEmail('lukaslaurinocppa@gmail.com');
+  gas.ctx.apiUpdateAdminSupportTicket({
+    id: t1.ticketId,
+    estado: 'AGUARDANDO_INFORMACOES',
+    prioridade: 'crítica',
+    respostaPublica: 'Por favor informe se ocorre em apenas um computador.',
+    notaInterna: 'SEGREDO_INTERNO: Suspeita de lock na planilha auxiliar X.',
+    linksRelacionados: {
+      commit: 'f610074',
+      releaseVersao: '4.39.0',
+      duplicadoDe: t2.protocolo
+    }
+  });
+
+  // Auto-vínculo como duplicata deve ser rejeitado
+  assert.throws(() => gas.ctx.apiUpdateAdminSupportTicket({
+    id: t1.ticketId,
+    linksRelacionados: { duplicadoDe: t1.protocolo }
+  }), /duplicata de si mesmo/);
+
+  // Publicação de nova release NÃO deve encerrar chamados automaticamente
+  gas.ctx.apiRecordAdminReleaseEvent({
+    schemaVersion: '2.0',
+    eventId: 'evt-no-autoclose-1',
+    unidade: 'PEPOA',
+    ambiente: 'OFICIAL',
+    tipoEvento: 'publish',
+    versao: '4.40.0',
+    commit: 'deadbeef',
+    deploymentVersion: '220',
+    deploymentId: 'AKfycb_PEPOA_OFICIAL_220',
+    url: gas.ctx.getConfig().pepoaOficial.url,
+    publicadoEm: new Date().toISOString(),
+    estadoHomologacao: 'HOMOLOGADO'
+  });
+
+  // Consulta pública via token individual
+  gas.setUserEmail('');
+  const lookup1 = gas.ctx.apiLookupSupportTicket(t1.protocolo, t1.trackingToken);
+  assert.equal(lookup1.success, true);
+  assert.equal(lookup1.ticket.estado, 'AGUARDANDO_INFORMACOES');
+  assert.equal(lookup1.ticket.prioridade, 'crítica');
+  assert.equal(lookup1.ticket.notasInternas, undefined, 'Notas internas nunca podem vazar na consulta pública');
+  assert.equal(lookup1.ticket.trackingTokenHash, undefined);
+  assert.equal(JSON.stringify(lookup1).includes('SEGREDO_INTERNO'), false);
+  assert.equal(lookup1.ticket.respostasPublicas.length, 1);
+  assert.ok(lookup1.ticket.historicoPublico.every((h) => h.tipo !== 'nota_interna'));
+
+  // Solicitante responde complemento público -> volta para EM_ANALISE
+  const replyRes = gas.ctx.apiAddPublicSupportReply(t1.protocolo, t1.trackingToken, 'Ocorre em todos os terminais.');
+  assert.equal(replyRes.ticket.estado, 'EM_ANALISE');
+
+  // Admin avança para EM_DESENVOLVIMENTO -> EM_HOMOLOGACAO -> RESOLVIDO -> ENCERRADO e depois REABRE
+  gas.setUserEmail('lukaslaurino@gmail.com');
+  gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, estado: 'EM_DESENVOLVIMENTO' });
+  gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, estado: 'EM_HOMOLOGACAO' });
+  const resResolved = gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, estado: 'RESOLVIDO' });
+  assert.ok(resResolved.ticket.resolvidoEm);
+  const resClosed = gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, estado: 'ENCERRADO' });
+  assert.ok(resClosed.ticket.encerradoEm);
+
+  // Não aceita complemento público após ENCERRADO
+  gas.setUserEmail('');
+  assert.throws(() => gas.ctx.apiAddPublicSupportReply(t1.protocolo, t1.trackingToken, 'Nova msg'), /já está encerrado/);
+
+  // Reabrir limpa resolvidoEm/encerradoEm e preserva histórico
+  gas.setUserEmail('lukaslaurino@gmail.com');
+  const reopened = gas.ctx.apiUpdateAdminSupportTicket({ id: t1.ticketId, reabrir: true, justificativa: 'Recorrência observada' });
+  assert.equal(reopened.ticket.estado, 'EM_ANALISE');
+  assert.equal(reopened.ticket.encerradoEm, null);
+  assert.equal(reopened.ticket.resolvidoEm, null);
+  assert.ok(reopened.ticket.historico.some((h) => h.tipo === 'reaberto'));
+});
+
+test('Suporte 2.2: exportação administrativa consolidada Markdown e JSON sem inventar campos ausentes', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'CredExp2026' });
+
+  gas.ctx.apiRecordAdminReleaseEvent({
+    schemaVersion: '2.0',
+    eventId: 'evt-exp-1',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    tipoEvento: 'publish',
+    versao: '4.41.0',
+    commit: '1122334',
+    deploymentVersion: '301',
+    deploymentId: 'AKfycb_CPPA_DEP_301',
+    url: gas.ctx.getConfig().cppaOficial.url,
+    publicadoEm: new Date().toISOString(),
+    estadoHomologacao: 'HOMOLOGADO'
+  });
+
+  gas.setUserEmail('');
+  const complete = gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Dispensação',
+    titulo: 'Erro completo com contexto',
+    descricao: 'Botão confirmar não grava lote na dispensação.',
+    observado: 'Botão permanece desabilitado após clicar.',
+    esperado: 'Dispensação deve concluir e exibir recibo.',
+    passosReproduzir: '1. Selecionar item 2. Clicar Confirmar.',
+    impactoInformado: 'Alto',
+    solicitanteNome: 'Farmácia CPPA',
+    supportCode: 'CredExp2026',
+    confirmacaoSemDadosClinicos: true
+  });
+
+  // Chamado mínimo na MADRE sem release, sem observado, sem esperado, sem impacto
+  const minimal = gas.ctx.apiCreateSupportTicket({
+    categoria: 'Dificuldade de utilização',
+    unidade: 'MADRE',
+    ambiente: 'AUDIT',
+    modulo: 'Dashboard',
+    titulo: 'Dúvida mínima sem campos opcionais',
+    descricao: 'Como visualizar o total mensal no painel principal?',
+    solicitanteNome: 'Operadora MADRE',
+    supportCode: 'CredExp2026',
+    confirmacaoSemDadosClinicos: true
+  });
+
+  gas.setUserEmail('lukaslaurino@gmail.com');
+  const mdRes = gas.ctx.apiExportAdminSupportTickets([complete.ticketId, minimal.ticketId], 'markdown');
+  assert.equal(mdRes.success, true);
+  assert.equal(mdRes.count, 2);
+  assert.ok(mdRes.content.includes(complete.protocolo));
+  assert.ok(mdRes.content.includes('v4.41.0 (@301'));
+  assert.ok(mdRes.content.includes('### Comportamento Observado'));
+  assert.ok(mdRes.content.includes('### Critérios de Aceite (Derivados do Esperado Informado)'));
+  assert.ok(mdRes.content.includes(minimal.protocolo));
+  assert.ok(mdRes.content.includes('Sem release confirmada no portal para este ambiente'));
+  // Verifica que o bloco do chamado mínimo NÃO inventou critérios de aceite nem impacto
+  const minimalSection = mdRes.content.split(`## ${minimal.protocolo}`)[1];
+  assert.equal(minimalSection.includes('Critérios de Aceite'), false);
+  assert.equal(minimalSection.includes('Impacto Informado'), false);
+  assert.equal(minimalSection.includes('Comportamento Observado'), false);
+
+  const jsonRes = gas.ctx.apiExportAdminSupportTickets([complete.ticketId, minimal.ticketId], 'json');
+  assert.equal(jsonRes.success, true);
+  const parsedJson = JSON.parse(jsonRes.content);
+  assert.equal(parsedJson.count, 2);
+  assert.equal(parsedJson.tickets[0].trackingTokenHash, undefined);
+});
+
+test('Suporte 2.2: segmentação PropertiesService (<7800 B), LockService, retenção/arquivamento e preservação de monitoramento/CONFIG_LINKS', () => {
+  let nowTime = Date.now();
+  class Clock extends Date {
+    constructor(value = nowTime) { super(value); }
+    static now() { return nowTime; }
+  }
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com', date: Clock });
+  gas.ctx.apiSaveAdminConfig(gas.ctx.getConfig());
+  gas.ctx.apiSyncMonitoringTrigger();
+  gas.runScheduled();
+
+  const monStateBefore = gas.store.MONITOR_STATE;
+  const cfgLinksBefore = gas.store.CONFIG_LINKS;
+  const triggersBefore = gas.triggers.map((t) => `${t.id}:${t.handler}`);
+
+  gas.ctx.apiSaveAdminSupportSettings({
+    newSupportCredential: 'CredRet2026',
+    maxActiveSegments: 4,
+    maxArchiveSegments: 3
+  });
+
+  // Criar 10 chamados (avançando janela de rate limit) para forçar múltiplos segmentos e verificar limite <= 7800 bytes
+  const createdIds = [];
+  for (let i = 0; i < 10; i++) {
+    if (i > 0 && i % 4 === 0) nowTime += 11 * 60000;
+    const res = gas.ctx.apiCreateSupportTicket({
+      categoria: i % 2 === 0 ? 'Erro de sistema' : 'Sugestão de melhoria',
+      unidade: i % 3 === 0 ? 'PEPOA' : 'CPPA',
+      ambiente: i % 2 === 0 ? 'OFICIAL' : 'AUDIT',
+      modulo: 'Relatórios',
+      titulo: `Chamado segmentado ${i} com texto descritivo realista`,
+      descricao: `Descrição sintética do chamado ${i} para validar segmentação e retenção no Apps Script. ` + 'Detalhes '.repeat(30),
+      solicitanteNome: `Operador ${i}`,
+      supportCode: 'CredRet2026',
+      confirmacaoSemDadosClinicos: true
+    });
+    createdIds.push(res.ticketId);
+  }
+
+  // Encerrar 6 chamados e executar retenção (overrideCloseDays: 0 para arquivar encerrados)
+  for (let j = 0; j < 6; j++) {
+    gas.ctx.apiUpdateAdminSupportTicket({ id: createdIds[j], estado: 'ENCERRADO' });
+  }
+  const retRes = gas.ctx.apiRunAdminSupportRetention({ overrideCloseDays: 0 });
+  assert.equal(retRes.success, true);
+  assert.equal(retRes.newlyArchived, 6);
+  assert.equal(retRes.activeCount, 4);
+  assert.equal(retRes.archivedCount, 6);
+
+  const bootAdmin = gas.ctx.apiGetAdminBootstrap();
+  assert.equal(bootAdmin.support.kpis.abertos, 4);
+  assert.equal(bootAdmin.support.kpis.arquivados, 6);
+
+  // Verificar teto real < 7800 bytes em TODAS propriedades SUPPORT_*
+  for (const [k, v] of Object.entries(gas.store)) {
+    if (k.startsWith('SUPPORT_')) {
+      const bytes = Buffer.byteLength(String(v), 'utf8');
+      assert.ok(bytes <= 7800, `Propriedade ${k} excedeu 7800 B: ${bytes}`);
+    }
+  }
+
+  const lockStats = gas.getLockStats();
+  assert.ok(lockStats.lockCalls > 0 && lockStats.lockCalls === lockStats.unlockCalls);
+
+  // Preservação integral de monitoramento, trigger e CONFIG_LINKS
+  assert.equal(gas.store.MONITOR_STATE, monStateBefore);
+  assert.equal(gas.store.CONFIG_LINKS, cfgLinksBefore);
+  assert.deepEqual(gas.triggers.map((t) => `${t.id}:${t.handler}`), triggersBefore);
+});
+
+test('Suporte 2.2: clientes Portal.html (?view=suporte) e Admin.html (aba Suporte) hidratam corretamente', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.apiSaveAdminSupportSettings({ newSupportCredential: 'CredUi2026' });
+  gas.ctx.apiCreateSupportTicket({
+    categoria: 'Erro de sistema',
+    unidade: 'CPPA',
+    ambiente: 'OFICIAL',
+    modulo: 'Login',
+    titulo: 'Teste UI Admin Suporte',
+    descricao: 'Chamado sintético para validar KPIs na interface administrativa.',
+    solicitanteNome: 'Operador UI',
+    supportCode: 'CredUi2026',
+    confirmacaoSemDadosClinicos: true
+  });
+
+  const portalHtml = gas.ctx.doGet({ parameter: { view: 'suporte' } }).getContent();
+  assert.ok(portalHtml.includes('view-suporte'));
+  assert.ok(portalHtml.includes('data-view="suporte"'));
+  assert.ok(portalHtml.includes('Não informe nome de paciente, CPF, INFOPEN'));
+  assert.equal(/\bOnline\b/i.test(portalHtml), false);
+
+  const pHarness = createDomHarness(portalHtml);
+  pHarness.run();
+
+  const adminBoot = gas.ctx.apiGetAdminBootstrap();
+  const adminHtml = gas.ctx.doGet({ parameter: { view: 'admin' } }).getContent();
+  assert.ok(adminHtml.includes('data-tab="suporte"'));
+  assert.ok(adminHtml.includes('tab-suporte'));
+
+  const aHarness = createDomHarness(adminHtml);
+  for (const id of [
+    'loginGate', 'adminWorkspace', 'adminEmailLabel', 'statusSummary', 'lastUpdate',
+    'groupOficial', 'groupAudit', 'adminReleaseStateGrid', 'adminReleaseHistoryWrap',
+    'storageStatsLine', 'adminAnnListWrap', 'secStatusBadges',
+    'cfgTitle', 'cfgSubtitle', 'cfgObs', 'cfgMaxSegs', 'cfgReplaySec', 'cfgAdminEmails',
+    'monDiagnosticsBox', 'monEnabled', 'monInterval', 'monSlowMs', 'monFailThresh',
+    'monRecoveryThresh', 'monStaleMin', 'monHistDays', 'monDailyDays', 'monIncDays',
+    'monFetchMode', 'monEnvTogglesWrap', 'monIncidentsWrap', 'monMaintListWrap',
+    'supKpiOpen', 'supKpiAnalysis', 'supKpiCritical', 'supKpiDev', 'supKpiResolved',
+    'supKpiSuggestions', 'supStorageSummary', 'adminSupTicketsWrap', 'supFilterCountNote',
+    'supSelectedCount', 'adminSupInvitesWrap', 'supCfgEnabled', 'supCfgAllowGoogle',
+    'supCfgRetClosed', 'supCfgRetArchive', 'supCfgMaxSegs', 'supCfgMaxArchSegs',
+    'supCredStatusBadge', 'btnThemeToggle', 'btnHealthCheck', 'btnReload', 'btnSave',
+    'btnReset', 'btnRecordRelease', 'btnResetAnnForm', 'btnSaveAnn', 'btnSaveSettings',
+    'btnAdminLogin', 'btnMonRunNow', 'btnMonSyncTrigger', 'btnSaveMonSettings',
+    'btnResetMaintForm', 'btnSaveMaint'
+  ]) {
+    aHarness.elements[id] = {
+      id, value: '', textContent: '', innerHTML: '', className: '', style: {},
+      classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+      querySelectorAll() { return []; }, appendChild() {}, addEventListener() {}
+    };
+  }
+  aHarness.run({
+    withSuccessHandler(fn) {
+      return { withFailureHandler() { return { apiGetAdminBootstrap() { fn(adminBoot); } }; } };
+    }
+  });
+  assert.equal(aHarness.elements.supKpiOpen.textContent, '1');
+  assert.ok(aHarness.elements.adminSupTicketsWrap.innerHTML.includes('Teste UI Admin Suporte'));
+});

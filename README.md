@@ -1,6 +1,6 @@
-# SISFAR-PORTAL 2.1
+# SISFAR-PORTAL 2.2
 
-Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia Prisional**, hospedada diretamente no **Google Apps Script (`HtmlService`)** com **Monitoramento Operacional Periódico Nativo**, sem dependência externa obrigatória nem consultas a bases clínicas.
+Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia Prisional**, hospedada diretamente no **Google Apps Script (`HtmlService`)** com **Monitoramento Operacional Periódico Nativo** e **Central de Suporte, Ocorrências e Sugestões**, sem dependência externa obrigatória nem consultas a bases clínicas.
 
 ---
 
@@ -26,13 +26,26 @@ Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia P
 
 ## Rotas e Endpoints
 
-- `?view=portal` (ou raiz `/exec`): **Portal Público 2.1** (`Início`, `Status` com timeline com lacunas explícitas e gráfico SVG leve, `Atualizações` e `Comunicados`).
-- `?view=admin` ou `?admin=1`: **Central Administrativa** em 5 abas (`Ambientes`, `Monitoramento`, `Releases`, `Comunicados`, `Configurações`).
+- `?view=portal` (ou raiz `/exec`): **Portal Público 2.2** (`Início`, `Status`, `Atualizações`, `Comunicados`, `Suporte`).
+- `?view=suporte` (ou `?tab=suporte`): **Central de Suporte Pública** (registro condicional de ocorrências/sugestões/suporte e acompanhamento individual por protocolo + token).
+- `?view=admin` ou `?admin=1`: **Central Administrativa** em 6 abas (`Ambientes`, `Monitoramento`, `Suporte`, `Releases`, `Comunicados`, `Configurações`).
 - `?action=get` (ou `?format=json`): Leitura JSON pública somente-leitura dos 6 ambientes em `CONFIG_LINKS`.
-- `?action=bootstrap`: Leitura JSON pública de links, releases, comunicados vigentes e resumo/histórico de monitoramento.
+- `?action=bootstrap`: Leitura JSON pública de links, releases, comunicados vigentes, monitoramento e metadados públicos de configuração de suporte (sem incluir chamados).
 - `?action=status`: Leitura JSON pública somente-leitura do módulo de monitoramento operacional.
+- `POST` (`action: "support_create" | "support_lookup" | "support_reply"`): Fluxos públicos protegidos da Central de Suporte.
 - `POST` (`action: "publish_event"`): Ingestão autenticada por **HMAC-SHA256**.
-- `POST` (`action: "admin_*"`): Operações administrativas autenticadas (Google allowlist ou `authToken` de sessão), incluindo `admin_monitoring_*`.
+- `POST` (`action: "admin_*"`): Operações administrativas autenticadas (Google allowlist ou `authToken` de sessão), incluindo `admin_monitoring_*` e `admin_support_*`.
+
+---
+
+## Central de Suporte 2.2 — Privacidade, Acesso, Ciclo e Retenção
+
+- **Zero envios anônimos irrestritos**: exige sessão Google identificada (quando habilitada) ou **credencial limitada de suporte** / **convite limitado** (`SUPPORT_AUTH_HASH` / `SUPPORT_INVITES`), completamente distintos de `ADMIN_AUTH_HASH` e `PORTAL_WEBHOOK_SECRET`.
+- **Privacidade clínica**: proíbe anexos, base64, CPF, INFOPEN, prontuário e dados de pacientes; exige confirmação explícita; notas internas ficam isoladas do acompanhamento público e do bootstrap.
+- **Módulo APAC**: habilitado e validado exclusivamente para a unidade `PEPOA`.
+- **Acompanhamento individual**: protocolo não sequencial (`SUP-YYYYMMDD-XXXXXX`) + token aleatório forte (`stk_...`, persistido apenas em hash SHA-256) com rate limit, sem lista pública e sem polling automático agressivo.
+- **Ciclo de vida e exportação**: estados `RECEBIDO`, `EM_ANALISE`, `AGUARDANDO_INFORMACOES`, `EM_DESENVOLVIMENTO`, `EM_HOMOLOGACAO`, `RESOLVIDO`, `ENCERRADO`, prioridades administrativas (`baixa`, `normal`, `alta`, `crítica`), reabertura, duplicatas e exportação consolidada local em Markdown/JSON sem serviços externos.
+- **Persistência segmentada**: `SUPPORT_SETTINGS`, `SUPPORT_INDEX`, `SUPPORT_DEDUPE`, `SUPPORT_INVITES`, `SUPPORT_SEG_*` e `SUPPORT_ARCH_*` respeitando o limite de `7800` bytes por propriedade e a cota total do projeto Apps Script, com retenção e arquivamento administráveis.
 
 ---
 
