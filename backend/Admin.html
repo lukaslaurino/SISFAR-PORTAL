@@ -715,7 +715,7 @@
 
   <script>
     (function () {
-      var ADMIN_BOOT = /*__SISFAR_ADMIN_BOOT__*/null;
+      var ADMIN_BOOT = "__SISFAR_ADMIN_BOOT__";
       var authToken = '';
       var bootstrapData = null;
       var isBusy = false;
@@ -1200,7 +1200,7 @@
       setupTabsAndTheme();
       setupActions();
 
-      if (ADMIN_BOOT && ADMIN_BOOT.requirePasscodeLogin) {
+      if (!ADMIN_BOOT || typeof ADMIN_BOOT !== 'object' || ADMIN_BOOT.requirePasscodeLogin) {
         document.getElementById('loginGate').style.display = 'block';
         document.getElementById('adminWorkspace').style.display = 'none';
       } else {

@@ -1481,7 +1481,7 @@ function renderPortalHtml() {
 
   var htmlContent = template
     .replace(/__SISFAR_ADMIN_URL__/g, safeAdminUrl)
-    .replace("/*__SISFAR_INITIAL_DATA__*/null", safeJsonForHtmlScript(payload));
+    .replace("\"__SISFAR_INITIAL_DATA__\"", safeJsonForHtmlScript(payload));
 
   return HtmlService.createHtmlOutput(htmlContent)
     .setTitle("SISFAR — Sistema Integrado de Farmácia Prisional")
@@ -1528,7 +1528,7 @@ function renderAdminHtml() {
   var htmlContent = template
     .replace(/__SISFAR_PORTAL_URL__/g, safePortalUrl)
     .replace(/__SISFAR_ADMIN_EMAIL__/g, escapeHtmlAttr(isGoogleAuth ? userEmail : "Autenticação requerida"))
-    .replace("/*__SISFAR_ADMIN_BOOT__*/null", safeJsonForHtmlScript(bootContext));
+    .replace("\"__SISFAR_ADMIN_BOOT__\"", safeJsonForHtmlScript(bootContext));
 
   return HtmlService.createHtmlOutput(htmlContent)
     .setTitle("SISFAR — Central Administrativa")
