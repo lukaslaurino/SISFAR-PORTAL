@@ -782,7 +782,7 @@
             <div class="form-group">
               <label for="monFetchMode">Modo UrlFetchApp</label>
               <select id="monFetchMode">
-                <option value="false">fetch isolado (latência real)</option>
+                <option value="false">fetch isolado (duração por endpoint)</option>
                 <option value="true">fetchAll paralelo (com fallback)</option>
               </select>
             </div>
@@ -1178,7 +1178,7 @@
           var trigStatusPill = !diag.available
             ? '<span class="pill pill-danger">API Trigger indisponível</span>'
             : (diag.duplicateDetected
-              ? '<span class="pill pill-danger">Duplicata detectada (' + diag.installedCount + ')</span>'
+              ? '<span class="pill pill-danger">Duplicata detectada (' + (diag.installedCount + (diag.legacyCount || 0)) + ')</span>'
               : (diag.installedCount === 1
                 ? '<span class="pill pill-oficial">1 trigger ativo (OK)</span>'
                 : '<span class="pill pill-audit">Nenhum trigger instalado</span>'));
@@ -1186,7 +1186,7 @@
           diagBox.innerHTML =
             '<div class="rel-env-card">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;"><strong>Trigger Periódico</strong>' + trigStatusPill + '</div>' +
-              '<div class="muted">Handler: <code>' + escapeHtml(diag.handler || 'runScheduledMonitoringCheck') + '</code></div>' +
+              '<div class="muted">Handler: <code>' + escapeHtml(diag.handler || 'runScheduledMonitoringCheck_') + '</code></div>' +
               '<div class="muted">Frequência: <strong>' + escapeHtml(settings.intervalMinutes || 15) + ' min</strong> · Sync: ' + escapeHtml(formatDateTime(diag.lastSyncedAt)) + '</div>' +
               (diag.errorMessage ? '<div class="muted" style="color:var(--danger-color);">' + escapeHtml(diag.errorMessage) + '</div>' : '') +
             '</div>' +
@@ -1227,7 +1227,7 @@
               '<td><code>' + escapeHtml(k) + '</code><div class="muted">' + escapeHtml(ev.unidade + ' ' + ev.ambiente) + '</div></td>' +
               '<td>' + (cfgActive ? '<span class="pill pill-oficial">Ativo</span>' : '<span class="pill pill-danger">Inativo em CONFIG_LINKS</span>') + '</td>' +
               '<td><select id="mon_env_en_' + k + '" style="min-width:120px;"><option value="true"' + (monOn ? ' selected' : '') + '>Habilitado</option><option value="false"' + (!monOn ? ' selected' : '') + '>Desabilitado</option></select></td>' +
-              '<td><strong>' + escapeHtml(ev.effectiveStatus) + '</strong><div class="muted">HTTP ' + escapeHtml(ev.httpStatus || 0) + ' · ' + escapeHtml(ev.durationMs || 0) + ' ms</div></td>' +
+              '<td><strong>' + escapeHtml(ev.effectiveStatus) + '</strong><div class="muted">HTTP ' + escapeHtml(ev.httpStatus || 0) + (ev.durationMs == null ? '' : ' · ' + escapeHtml(ev.durationMs) + ' ms') + '</div></td>' +
               '<td>' + escapeHtml(ev.lastCheckedAt ? formatDateTime(ev.lastCheckedAt) : 'Sem amostra') + '</td>' +
               '<td>' + escapeHtml(ev.lastErrorSanitized || ev.statusReason || '—') + '</td>' +
             '</tr>';
@@ -1572,6 +1572,10 @@
         document.getElementById('btnMonRunNow').addEventListener('click', function () {
           showToast('Executando verificação dos ambientes ativos...', 'success');
           callServer('apiRunManualMonitoringCheck', [authToken], function (res) {
+            if (res && res.skipped) {
+              showToast(res.reason, 'error');
+              return;
+            }
             showToast('Verificação concluída (' + (res.checkedCount || 0) + ' ambientes em ' + (res.durationMs || 0) + ' ms).', 'success');
             loadBootstrap();
           }, function (err) {

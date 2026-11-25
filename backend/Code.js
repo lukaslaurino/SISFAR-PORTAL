@@ -109,6 +109,7 @@ const PROP_KEYS = {
   PORTAL_SETTINGS: "SISFAR_PORTAL_SETTINGS_V2",
   MONITOR_SETTINGS: "MONITOR_SETTINGS",
   MONITOR_STATE: "MONITOR_STATE",
+  MONITOR_LEASE: "MONITOR_LEASE",
   MONITOR_HISTORY: "MONITOR_HISTORY",
   MONITOR_HISTORY_SEG_PREFIX: "MONITOR_HISTORY_SEG_",
   MONITOR_INCIDENTS: "MONITOR_INCIDENTS",
@@ -118,7 +119,10 @@ const PROP_KEYS = {
 const VALID_MONITOR_INTERVALS = [5, 10, 15, 30, 60];
 const VALID_INCIDENT_STATES = ["INVESTIGACAO", "CONFIRMADO", "RESOLVIDO", "ENCERRADO_ADMIN"];
 const VALID_MAINTENANCE_STATES = ["PROGRAMADA", "EM_ANDAMENTO", "ENCERRADA", "CANCELADA"];
-const MONITOR_TRIGGER_HANDLER = "runScheduledMonitoringCheck";
+const MONITOR_TRIGGER_HANDLER = "runScheduledMonitoringCheck_";
+const LEGACY_MONITOR_TRIGGER_HANDLER = "runScheduledMonitoringCheck";
+// Longer than the Apps Script execution limit, so a live cycle cannot lose its lease normally.
+const MONITOR_LEASE_MS = 7 * 60000;
 const MONITOR_MIN_AVAIL_SAMPLES = 4;
 
 const DEFAULT_MONITOR_SETTINGS = {
@@ -1164,7 +1168,7 @@ function sanitizeMonitorText_(str, maxLen) {
 
 function sanitizeRedirectHost_(locationHeader) {
   if (!locationHeader || typeof locationHeader !== "string") return "";
-  var m = locationHeader.trim().match(/^https?:\/\/([^\/:\?#]+)/i);
+  var m = locationHeader.trim().match(/^(?:https?:)?\/\/([^\/:\?#]+)/i);
   return m ? m[1].toLowerCase() : "";
 }
 
@@ -1215,6 +1219,8 @@ function getMonitorSettings_() {
         }
       }
     }
+    if (parsed.triggerId) base.triggerId = String(parsed.triggerId);
+    if (parsed.triggerOwner) base.triggerOwner = String(parsed.triggerOwner);
     if (parsed.triggerSyncedInterval) base.triggerSyncedInterval = Number(parsed.triggerSyncedInterval);
     if (parsed.triggerLastSyncedAt) base.triggerLastSyncedAt = String(parsed.triggerLastSyncedAt);
     if (parsed.atualizadoEm) base.atualizadoEm = String(parsed.atualizadoEm);
@@ -1227,71 +1233,71 @@ function saveMonitorSettingsInternal_(payload, author, skipTriggerSync) {
   if (!payload || typeof payload !== "object") {
     throw new Error("Configurações de monitoramento inválidas.");
   }
-  var next = getMonitorSettings_();
-  if (payload.enabled !== undefined) next.enabled = Boolean(payload.enabled);
-  if (payload.intervalMinutes !== undefined) {
-    var iv = Number(payload.intervalMinutes);
-    if (VALID_MONITOR_INTERVALS.indexOf(iv) === -1) {
-      throw new Error("Frequência inválida. Intervalos suportados: " + VALID_MONITOR_INTERVALS.join(", ") + " min.");
+  withScriptLock_(function () {
+    var next = getMonitorSettings_();
+    if (payload.enabled !== undefined) next.enabled = Boolean(payload.enabled);
+    if (payload.intervalMinutes !== undefined) {
+      var iv = Number(payload.intervalMinutes);
+      if (VALID_MONITOR_INTERVALS.indexOf(iv) === -1) {
+        throw new Error("Frequência inválida. Intervalos suportados: " + VALID_MONITOR_INTERVALS.join(", ") + " min.");
+      }
+      next.intervalMinutes = iv;
     }
-    next.intervalMinutes = iv;
-  }
-  if (payload.slowThresholdMs !== undefined) {
-    var slow = Number(payload.slowThresholdMs);
-    if (isNaN(slow) || slow < 500 || slow > 30000) throw new Error("Limiar de lentidão deve estar entre 500 e 30000 ms.");
-    next.slowThresholdMs = Math.floor(slow);
-  }
-  if (payload.failureThreshold !== undefined) {
-    var ft = Number(payload.failureThreshold);
-    if (isNaN(ft) || ft < 1 || ft > 10) throw new Error("Falhas consecutivas para incidente deve estar entre 1 e 10.");
-    next.failureThreshold = Math.floor(ft);
-  }
-  if (payload.recoverySuccessThreshold !== undefined) {
-    var rt = Number(payload.recoverySuccessThreshold);
-    if (isNaN(rt) || rt < 1 || rt > 5) throw new Error("Sucessos consecutivos para recuperação deve estar entre 1 e 5.");
-    next.recoverySuccessThreshold = Math.floor(rt);
-  }
-  if (payload.staleMinutes !== undefined) {
-    var sm = Number(payload.staleMinutes);
-    if (isNaN(sm) || sm < 10 || sm > 1440) throw new Error("Validade da amostra deve estar entre 10 e 1440 minutos.");
-    next.staleMinutes = Math.floor(sm);
-  }
-  if (payload.historyRetentionDays !== undefined) {
-    var hrd = Number(payload.historyRetentionDays);
-    if (isNaN(hrd) || hrd < 1 || hrd > 14) throw new Error("Retenção detalhada deve estar entre 1 e 14 dias.");
-    next.historyRetentionDays = Math.floor(hrd);
-  }
-  if (payload.dailyRetentionDays !== undefined) {
-    var drd = Number(payload.dailyRetentionDays);
-    if (isNaN(drd) || drd < 7 || drd > 30) throw new Error("Retenção diária deve estar entre 7 e 30 dias.");
-    next.dailyRetentionDays = Math.floor(drd);
-  }
-  if (payload.incidentRetentionDays !== undefined) {
-    var ird = Number(payload.incidentRetentionDays);
-    if (isNaN(ird) || ird < 7 || ird > 365) throw new Error("Retenção de incidentes deve estar entre 7 e 365 dias.");
-    next.incidentRetentionDays = Math.floor(ird);
-  }
-  if (payload.useFetchAll !== undefined) {
-    next.useFetchAll = Boolean(payload.useFetchAll);
-  }
-  if (payload.environments && typeof payload.environments === "object") {
-    for (var i = 0; i < CANONICAL_IDS.length; i++) {
-      var k = CANONICAL_IDS[i];
-      if (payload.environments[k] && typeof payload.environments[k].enabled === "boolean") {
-        next.environments[k] = { enabled: payload.environments[k].enabled };
+    if (payload.slowThresholdMs !== undefined) {
+      var slow = Number(payload.slowThresholdMs);
+      if (isNaN(slow) || slow < 500 || slow > 30000) throw new Error("Limiar de lentidão deve estar entre 500 e 30000 ms.");
+      next.slowThresholdMs = Math.floor(slow);
+    }
+    if (payload.failureThreshold !== undefined) {
+      var ft = Number(payload.failureThreshold);
+      if (isNaN(ft) || ft < 1 || ft > 10) throw new Error("Falhas consecutivas para incidente deve estar entre 1 e 10.");
+      next.failureThreshold = Math.floor(ft);
+    }
+    if (payload.recoverySuccessThreshold !== undefined) {
+      var rt = Number(payload.recoverySuccessThreshold);
+      if (isNaN(rt) || rt < 1 || rt > 5) throw new Error("Sucessos consecutivos para recuperação deve estar entre 1 e 5.");
+      next.recoverySuccessThreshold = Math.floor(rt);
+    }
+    if (payload.staleMinutes !== undefined) {
+      var sm = Number(payload.staleMinutes);
+      if (isNaN(sm) || sm < 10 || sm > 1440) throw new Error("Validade da amostra deve estar entre 10 e 1440 minutos.");
+      next.staleMinutes = Math.floor(sm);
+    }
+    if (payload.historyRetentionDays !== undefined) {
+      var hrd = Number(payload.historyRetentionDays);
+      if (isNaN(hrd) || hrd < 1 || hrd > 14) throw new Error("Retenção detalhada deve estar entre 1 e 14 dias.");
+      next.historyRetentionDays = Math.floor(hrd);
+    }
+    if (payload.dailyRetentionDays !== undefined) {
+      var drd = Number(payload.dailyRetentionDays);
+      if (isNaN(drd) || drd < 7 || drd > 30) throw new Error("Retenção diária deve estar entre 7 e 30 dias.");
+      next.dailyRetentionDays = Math.floor(drd);
+    }
+    if (payload.incidentRetentionDays !== undefined) {
+      var ird = Number(payload.incidentRetentionDays);
+      if (isNaN(ird) || ird < 7 || ird > 365) throw new Error("Retenção de incidentes deve estar entre 7 e 365 dias.");
+      next.incidentRetentionDays = Math.floor(ird);
+    }
+    if (payload.useFetchAll !== undefined) {
+      next.useFetchAll = Boolean(payload.useFetchAll);
+    }
+    if (payload.environments && typeof payload.environments === "object") {
+      for (var i = 0; i < CANONICAL_IDS.length; i++) {
+        var k = CANONICAL_IDS[i];
+        if (payload.environments[k] && typeof payload.environments[k].enabled === "boolean") {
+          next.environments[k] = { enabled: payload.environments[k].enabled };
+        }
       }
     }
-  }
-  next.atualizadoEm = new Date().toISOString();
-  next.atualizadoPor = author || "admin";
+    next.atualizadoEm = new Date().toISOString();
+    next.atualizadoPor = author || "admin";
 
-  withScriptLock_(function () {
     getProps_().setProperty(PROP_KEYS.MONITOR_SETTINGS, JSON.stringify(next));
   });
 
   var triggerSync = null;
   if (!skipTriggerSync) {
-    triggerSync = syncMonitoringTriggerInternal_(false);
+    triggerSync = syncMonitoringTriggerInternal_();
   }
   return {
     success: true,
@@ -1523,7 +1529,7 @@ function getActiveMaintenanceForEnv_(maintenances, envKey, nowMs) {
 function classifyHttpResponse_(httpCode, locationHeader, bodySnippet, durationMs, slowThresholdMs) {
   var code = Number(httpCode || 0);
   var slowMs = Number(slowThresholdMs || DEFAULT_MONITOR_SETTINGS.slowThresholdMs);
-  var ms = Math.max(0, Math.round(Number(durationMs || 0)));
+  var timing = durationMs === null ? "" : " · " + durationMs + " ms";
 
   if (code === 401) {
     return {
@@ -1539,7 +1545,7 @@ function classifyHttpResponse_(httpCode, locationHeader, bodySnippet, durationMs
   if (code >= 300 && code < 400) {
     var locRaw = String(locationHeader || "");
     var locHost = sanitizeRedirectHost_(locRaw);
-    var isLoginRedirect = /accounts\.google\.com|servicelogin|signin|oauth|login/i.test(locRaw);
+    var isLoginRedirect = locHost === "accounts.google.com" || /(?:^|\/)(?:servicelogin|signin|oauth2?|login)(?:[/?#]|$)/i.test(locRaw.split(/[?#]/)[0]);
     if (isLoginRedirect) {
       return {
         rawClassification: "AUTENTICACAO_NECESSARIA",
@@ -1560,14 +1566,13 @@ function classifyHttpResponse_(httpCode, locationHeader, bodySnippet, durationMs
         summary: "HTTP " + code + " — Redirecionamento sem destino"
       };
     }
-    var isSlowRedir = ms >= slowMs;
     return {
-      rawClassification: isSlowRedir ? "RESPOSTA_LENTA" : "ACESSIVEL",
-      category: isSlowRedir ? "HTTP_3XX_REDIRECT_SLOW" : "HTTP_3XX_REDIRECT_OK",
+      rawClassification: "NAO_VERIFICAVEL",
+      category: "HTTP_3XX_REDIRECT",
       isFailure: false,
       isAuthRequired: false,
-      isReachable: true,
-      summary: "HTTP " + code + " — Redirecionamento técnico" + (locHost ? " (" + locHost + ")" : "") + " · " + ms + " ms"
+      isReachable: false,
+      summary: "HTTP " + code + " — Redirecionamento técnico" + (locHost ? " (" + locHost + ")" : "")
     };
   }
 
@@ -1595,22 +1600,22 @@ function classifyHttpResponse_(httpCode, locationHeader, bodySnippet, durationMs
         summary: "HTTP " + code + " — Página de erro retornada"
       };
     }
-    var isSlow = ms >= slowMs;
+    var isSlow = durationMs !== null && durationMs >= slowMs;
     return {
       rawClassification: isSlow ? "RESPOSTA_LENTA" : "ACESSIVEL",
       category: isSlow ? ("HTTP_" + code + "_SLOW") : ("HTTP_" + code + "_OK"),
       isFailure: false,
       isAuthRequired: false,
       isReachable: true,
-      summary: "HTTP " + code + (isSlow ? " — Resposta lenta" : " — Acessível") + " (" + ms + " ms)"
+      summary: "HTTP " + code + (isSlow ? " — Resposta lenta" : " — Acessível") + timing
     };
   }
 
   if (code === 403) {
     return {
-      rawClassification: "FALHA_VERIFICACAO",
+      rawClassification: "NAO_VERIFICAVEL",
       category: "HTTP_403_FORBIDDEN",
-      isFailure: true,
+      isFailure: false,
       isAuthRequired: false,
       isReachable: false,
       summary: "HTTP 403 — Acesso proibido"
@@ -1659,6 +1664,18 @@ function classifyHttpResponse_(httpCode, locationHeader, bodySnippet, durationMs
 
 function classifyProbeException_(err) {
   var msg = sanitizeMonitorText_(err && err.message ? err.message : String(err || "Erro de rede"), 120);
+  if (/permission|authoriz|permissão|autoriza|service invoked too many times|quota/i.test(msg)) {
+    return {
+      httpStatus: 0,
+      durationMs: null,
+      rawClassification: "NAO_VERIFICAVEL",
+      category: "PROBE_RUNTIME_ERROR",
+      isFailure: false,
+      isAuthRequired: false,
+      isReachable: false,
+      summary: "Sonda sem permissão ou cota para verificar o destino"
+    };
+  }
   var cat = "NETWORK_ERROR";
   if (/timeout|timed out|exceeded/i.test(msg)) cat = "TIMEOUT_ERROR";
   else if (/dns|resolve|host/i.test(msg)) cat = "DNS_ERROR";
@@ -1713,7 +1730,7 @@ function probeSingleEndpoint_(url, slowThresholdMs) {
     return cls;
   } catch (err) {
     var fail = classifyProbeException_(err);
-    fail.durationMs = Math.max(0, Date.now() - start);
+    if (fail.category !== "PROBE_RUNTIME_ERROR") fail.durationMs = Math.max(0, Date.now() - start);
     return fail;
   }
 }
@@ -1746,10 +1763,8 @@ function probeBatchEndpoints_(activeTargets, settings) {
         }
       };
     });
-    var batchStart = Date.now();
     try {
       var resps = UrlFetchApp.fetchAll(reqs);
-      var batchDuration = Math.max(1, Date.now() - batchStart);
       for (var i = 0; i < activeTargets.length; i++) {
         var t = activeTargets[i];
         var resp = resps[i];
@@ -1760,9 +1775,9 @@ function probeBatchEndpoints_(activeTargets, settings) {
         if (httpCode >= 200 && httpCode < 300 && resp && typeof resp.getContentText === "function") {
           snippet = String(resp.getContentText() || "").slice(0, 4096);
         }
-        var cls = classifyHttpResponse_(httpCode, locHeader, snippet, batchDuration, slowMs);
+        var cls = classifyHttpResponse_(httpCode, locHeader, snippet, null, slowMs);
         cls.httpStatus = httpCode;
-        cls.durationMs = batchDuration;
+        cls.durationMs = null;
         results[t.envKey] = cls;
       }
       return { modeUsed: "fetchAll", results: results };
@@ -1778,6 +1793,18 @@ function probeBatchEndpoints_(activeTargets, settings) {
   return { modeUsed: "isolated_fetch", results: results };
 }
 
+function normalizeDailyEvidence_(bucket) {
+  if (bucket.httpEvidence) return bucket;
+  var count = Number(bucket.count || 0);
+  var auth = Number(bucket.auth || 0);
+  var maint = Number(bucket.maint || 0);
+  return { httpEvidence: 1, ok: 0, slow: 0, fail: 0, auth: auth, maint: maint, unknown: Math.max(0, count - auth - maint), count: count };
+}
+
+function isInconclusiveLegacyCategory_(category) {
+  return category === "HTTP_403_FORBIDDEN" || /^HTTP_3XX_REDIRECT_(OK|SLOW)$/.test(category);
+}
+
 function appendMonitorHistoryLocked_(props, newSamples, settings, nowDate) {
   if (!newSamples || newSamples.length === 0) return;
   var meta = getMonitorHistoryMeta_();
@@ -1791,20 +1818,19 @@ function appendMonitorHistoryLocked_(props, newSamples, settings, nowDate) {
   if (!meta.daily[dayKey]) meta.daily[dayKey] = {};
   for (var i = 0; i < newSamples.length; i++) {
     var sm = newSamples[i];
-    if (!meta.daily[dayKey][sm.e]) {
-      meta.daily[dayKey][sm.e] = { ok: 0, slow: 0, fail: 0, auth: 0, maint: 0, sumMs: 0, count: 0 };
-    }
-    var bucket = meta.daily[dayKey][sm.e];
+    var bucket = normalizeDailyEvidence_(meta.daily[dayKey][sm.e] || {});
+    meta.daily[dayKey][sm.e] = bucket;
     bucket.count += 1;
-    bucket.sumMs += Math.max(0, Number(sm.d || 0));
     if (sm.m === 1) {
       bucket.maint += 1;
-    } else if (sm.s === "ACESSIVEL") {
+    } else if (sm.r === "ACESSIVEL") {
       bucket.ok += 1;
-    } else if (sm.s === "RESPOSTA_LENTA") {
+    } else if (sm.r === "RESPOSTA_LENTA") {
       bucket.slow += 1;
-    } else if (sm.s === "AUTENTICACAO_NECESSARIA") {
+    } else if (sm.r === "AUTENTICACAO_NECESSARIA") {
       bucket.auth += 1;
+    } else if (sm.r === "NAO_VERIFICAVEL") {
+      bucket.unknown += 1;
     } else {
       bucket.fail += 1;
     }
@@ -1882,21 +1908,46 @@ function appendMonitorHistoryLocked_(props, newSamples, settings, nowDate) {
   props.setProperty(PROP_KEYS.MONITOR_HISTORY, JSON.stringify(meta));
 }
 
-function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
-  var cycleStartMs = Date.now();
-  var config = getConfig();
-  var settings = getMonitorSettings_();
-  if (!settings.enabled && !bypassEnabledFlag) {
-    return {
-      success: true,
-      skipped: true,
-      reason: "Monitoramento global pausado em MONITOR_SETTINGS."
-    };
-  }
+function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag, triggerUid) {
+  var props = getProps_();
+  var lease = withScriptLock_(function () {
+    var settings = getMonitorSettings_();
+    if (!bypassEnabledFlag && (!settings.enabled || !triggerUid || triggerUid !== settings.triggerId)) {
+      return null;
+    }
+    var now = Date.now();
+    var activeLease = JSON.parse(props.getProperty(PROP_KEYS.MONITOR_LEASE) || "null");
+    if (activeLease && activeLease.expiresAt > now) return null;
 
-  var maintenances = getMonitorMaintenancesData_().items;
-  var nowDate = new Date();
-  var nowMs = nowDate.getTime();
+    var lease = { id: Utilities.getUuid(), expiresAt: now + MONITOR_LEASE_MS };
+    props.setProperty(PROP_KEYS.MONITOR_LEASE, JSON.stringify(lease));
+    return {
+      id: lease.id,
+      config: getConfig(),
+      configRaw: props.getProperty(PROP_KEYS.CONFIG_LINKS),
+      settings: settings,
+      settingsRaw: props.getProperty(PROP_KEYS.MONITOR_SETTINGS),
+      startedAt: now
+    };
+  });
+  if (!lease) {
+    return { success: true, skipped: true, reason: "Coleta em andamento, pausada ou gatilho não registrado." };
+  }
+  try {
+    return collectMonitoringCycle_(triggerSource, lease, props);
+  } finally {
+    withScriptLock_(function () {
+      var activeLease = JSON.parse(props.getProperty(PROP_KEYS.MONITOR_LEASE) || "null");
+      if (activeLease && activeLease.id === lease.id) props.deleteProperty(PROP_KEYS.MONITOR_LEASE);
+    });
+  }
+}
+
+function collectMonitoringCycle_(triggerSource, lease, props) {
+  var config = lease.config;
+  var settings = lease.settings;
+  var nowMs = lease.startedAt;
+  var nowDate = new Date(nowMs);
   var nowIso = nowDate.toISOString();
 
   var activeTargets = [];
@@ -1915,12 +1966,18 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
   var probeBatch = probeBatchEndpoints_(activeTargets, settings);
 
   return withScriptLock_(function () {
-    var props = getProps_();
+    var activeLease = JSON.parse(props.getProperty(PROP_KEYS.MONITOR_LEASE) || "null");
+    if (!activeLease || activeLease.id !== lease.id || activeLease.expiresAt <= Date.now()
+        || lease.configRaw !== props.getProperty(PROP_KEYS.CONFIG_LINKS)
+        || lease.settingsRaw !== props.getProperty(PROP_KEYS.MONITOR_SETTINGS)) {
+      return { success: true, skipped: true, reason: "Coleta descartada após expiração ou alteração de configuração." };
+    }
+    var maintenances = getMonitorMaintenancesData_().items;
     var state = getMonitorState_();
     var incData = getMonitorIncidentsData_();
     var items = incData.items;
     var samplesToAppend = [];
-    var summaryCounts = { accessible: 0, slow: 0, auth: 0, attention: 0, unavailable: 0, disabled: 0, maintenance: 0 };
+    var summaryCounts = { accessible: 0, slow: 0, auth: 0, attention: 0, unavailable: 0, disabled: 0, maintenance: 0, nonVerifiable: 0 };
 
     for (var j = 0; j < CANONICAL_IDS.length; j++) {
       var k = CANONICAL_IDS[j];
@@ -1943,9 +2000,9 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
       var inMaint = Boolean(activeMaint);
       if (inMaint) summaryCounts.maintenance++;
 
-      var consecutiveFailures = Number(prev.consecutiveFailures || 0);
+      var consecutiveFailures = isInconclusiveLegacyCategory_(prev.category) ? 0 : Number(prev.consecutiveFailures || 0);
       var consecutiveSuccesses = Number(prev.consecutiveSuccesses || 0);
-      var firstFailureAt = prev.firstFailureAt || null;
+      var firstFailureAt = consecutiveFailures ? prev.firstFailureAt || null : null;
       var activeIncidentId = prev.activeIncidentId || null;
       var totalChecks = Number(prev.totalChecks || 0) + 1;
       var totalFailures = Number(prev.totalFailures || 0);
@@ -1953,7 +2010,13 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
       var stateClassification = probe.rawClassification;
       var recoveringCount = 0;
 
-      if (probe.isFailure) {
+      if (!probe.isFailure && !probe.isReachable) {
+        consecutiveFailures = 0;
+        consecutiveSuccesses = 0;
+        firstFailureAt = null;
+        if (probe.isAuthRequired) summaryCounts.auth++;
+        else summaryCounts.nonVerifiable++;
+      } else if (probe.isFailure) {
         totalFailures += 1;
         consecutiveFailures += 1;
         consecutiveSuccesses = 0;
@@ -2013,7 +2076,7 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
         consecutiveFailures = 0;
         firstFailureAt = null;
         consecutiveSuccesses += 1;
-        if (probe.isReachable) lastSuccessAt = nowIso;
+        lastSuccessAt = nowIso;
 
         var openInc = null;
         if (activeIncidentId) {
@@ -2046,7 +2109,6 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
 
         if (stateClassification === "ACESSIVEL") summaryCounts.accessible++;
         else if (stateClassification === "RESPOSTA_LENTA") summaryCounts.slow++;
-        else if (stateClassification === "AUTENTICACAO_NECESSARIA") summaryCounts.auth++;
         else if (stateClassification === "INDISPONIVEL") summaryCounts.unavailable++;
       }
 
@@ -2056,6 +2118,7 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
         ambiente: meta.ambiente,
         lastCheckedAt: nowIso,
         durationMs: probe.durationMs,
+        measuredIndividually: probe.durationMs !== null,
         httpStatus: probe.httpStatus,
         category: probe.category,
         rawClassification: stateClassification,
@@ -2079,13 +2142,14 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
         s: stateClassification,
         r: probe.rawClassification,
         d: probe.durationMs,
+        l: probe.durationMs !== null ? 1 : 0,
         c: probe.httpStatus,
         k: probe.category,
         m: inMaint ? 1 : 0
       });
     }
 
-    var runDurationMs = Math.max(1, Date.now() - cycleStartMs);
+    var runDurationMs = Math.max(1, Date.now() - lease.startedAt);
     state.updatedAt = nowIso;
     state.lastRunAt = nowIso;
     state.lastRunDurationMs = runDurationMs;
@@ -2108,19 +2172,24 @@ function runMonitoringCycleInternal_(triggerSource, bypassEnabledFlag) {
   });
 }
 
-/**
- * Handler público exigido pelo gatilho instalável de tempo (Clock Trigger) do Apps Script.
- */
-function runScheduledMonitoringCheck() {
-  return runMonitoringCycleInternal_("clock-trigger", false);
+/** Handler privado para o gatilho instalável registrado. */
+function runScheduledMonitoringCheck_(event) {
+  var result = runMonitoringCycleInternal_("clock-trigger", false, event && String(event.triggerUid || ""));
+  console.log(JSON.stringify(result));
+  return result;
 }
 
-/**
- * Helper administrativo para execução manual no Editor do Apps Script para configurar
- * o gatilho periódico idempotente sem duplicatas.
- */
+/** Executar no editor com a conta que publica o portal. */
 function configurarTriggerMonitoramento_() {
-  return syncMonitoringTriggerInternal_(true);
+  var result = syncMonitoringTriggerInternal_();
+  if (!result.success) throw new Error(result.error);
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+function isMonitoringTrigger_(trigger) {
+  var handler = trigger.getHandlerFunction();
+  return handler === MONITOR_TRIGGER_HANDLER || handler === LEGACY_MONITOR_TRIGGER_HANDLER;
 }
 
 function getTriggerDiagnostics_() {
@@ -2128,6 +2197,7 @@ function getTriggerDiagnostics_() {
   var info = {
     available: false,
     installedCount: 0,
+    legacyCount: 0,
     duplicateDetected: false,
     triggerIds: [],
     handler: MONITOR_TRIGGER_HANDLER,
@@ -2145,22 +2215,21 @@ function getTriggerDiagnostics_() {
     var triggers = ScriptApp.getProjectTriggers() || [];
     for (var i = 0; i < triggers.length; i++) {
       var t = triggers[i];
-      if (t && typeof t.getHandlerFunction === "function" && t.getHandlerFunction() === MONITOR_TRIGGER_HANDLER) {
+      if (!isMonitoringTrigger_(t)) continue;
+      if (t.getHandlerFunction() === LEGACY_MONITOR_TRIGGER_HANDLER) info.legacyCount++;
+      else {
         info.installedCount++;
-        if (typeof t.getUniqueId === "function") {
-          info.triggerIds.push(t.getUniqueId());
-        }
+        info.triggerIds.push(t.getUniqueId());
       }
     }
-    info.duplicateDetected = info.installedCount > 1;
+    info.duplicateDetected = info.installedCount + info.legacyCount > 1;
   } catch (err) {
     info.errorMessage = sanitizeMonitorText_(err && err.message ? err.message : String(err), 160);
   }
   return info;
 }
 
-function syncMonitoringTriggerInternal_(forceRecreate) {
-  var settings = getMonitorSettings_();
+function syncMonitoringTriggerInternal_() {
   if (typeof ScriptApp === "undefined" || !ScriptApp || typeof ScriptApp.getProjectTriggers !== "function") {
     return {
       success: false,
@@ -2170,49 +2239,45 @@ function syncMonitoringTriggerInternal_(forceRecreate) {
   }
   return withScriptLock_(function () {
     try {
-      var triggers = ScriptApp.getProjectTriggers() || [];
-      var existing = [];
-      for (var i = 0; i < triggers.length; i++) {
-        if (triggers[i] && triggers[i].getHandlerFunction && triggers[i].getHandlerFunction() === MONITOR_TRIGGER_HANDLER) {
-          existing.push(triggers[i]);
+      var settings = getMonitorSettings_();
+      var owner = String(Session.getEffectiveUser().getEmail() || "").toLowerCase();
+      if (!owner || (settings.triggerOwner && settings.triggerOwner !== owner)) {
+        return { success: false, synced: false, error: "Sincronize com a conta instaladora do gatilho do portal." };
+      }
+      var existing = ScriptApp.getProjectTriggers().filter(isMonitoringTrigger_);
+      var registered = existing.find(function (trigger) {
+        return trigger.getHandlerFunction() === MONITOR_TRIGGER_HANDLER
+          && trigger.getUniqueId() === settings.triggerId;
+      });
+      var action = "removed_all";
+      var keepId = null;
+      if (settings.enabled) {
+        if (registered && settings.triggerSyncedInterval === settings.intervalMinutes) {
+          keepId = registered.getUniqueId();
+          action = "kept_existing";
+        } else {
+          var builder = ScriptApp.newTrigger(MONITOR_TRIGGER_HANDLER).timeBased();
+          var schedule = settings.intervalMinutes === 60 ? builder.everyHours(1) : builder.everyMinutes(settings.intervalMinutes);
+          keepId = schedule.create().getUniqueId();
+          action = existing.length ? "recreated" : "created";
         }
       }
-
-      if (!settings.enabled) {
-        for (var d = 0; d < existing.length; d++) {
-          ScriptApp.deleteTrigger(existing[d]);
-        }
-        settings.triggerSyncedInterval = null;
+      if (action !== "kept_existing") {
+        settings.triggerId = keepId;
+        settings.triggerOwner = keepId ? owner : null;
+        settings.triggerSyncedInterval = keepId ? settings.intervalMinutes : null;
         settings.triggerLastSyncedAt = new Date().toISOString();
         getProps_().setProperty(PROP_KEYS.MONITOR_SETTINGS, JSON.stringify(settings));
-        return { success: true, synced: true, action: "removed_all", installedCount: 0 };
       }
-
-      var matchesInterval = existing.length === 1 && Number(settings.triggerSyncedInterval) === Number(settings.intervalMinutes);
-      if (matchesInterval && !forceRecreate) {
-        return { success: true, synced: true, action: "kept_existing", installedCount: 1 };
-      }
-
-      for (var r = 0; r < existing.length; r++) {
-        ScriptApp.deleteTrigger(existing[r]);
-      }
-
-      var builder = ScriptApp.newTrigger(MONITOR_TRIGGER_HANDLER).timeBased();
-      if (settings.intervalMinutes === 60) {
-        builder.everyHours(1).create();
-      } else {
-        builder.everyMinutes(settings.intervalMinutes).create();
-      }
-
-      settings.triggerSyncedInterval = settings.intervalMinutes;
-      settings.triggerLastSyncedAt = new Date().toISOString();
-      getProps_().setProperty(PROP_KEYS.MONITOR_SETTINGS, JSON.stringify(settings));
+      existing.forEach(function (trigger) {
+        if (trigger.getUniqueId() !== keepId) ScriptApp.deleteTrigger(trigger);
+      });
       return {
         success: true,
         synced: true,
-        action: existing.length > 0 ? "recreated" : "created",
-        installedCount: 1,
-        intervalMinutes: settings.intervalMinutes
+        action: action,
+        installedCount: keepId ? 1 : 0,
+        intervalMinutes: keepId ? settings.intervalMinutes : null
       };
     } catch (err) {
       return {
@@ -2262,6 +2327,14 @@ function resolveEffectiveEnvMonitoring_(envKey, config, settings, monState, main
   var isMonEnabled = !monEnv || monEnv.enabled !== false;
   var rawState = monState && monState.environments ? monState.environments[envKey] : null;
   var activeMaint = getActiveMaintenanceForEnv_(maintenances, envKey, nowMs);
+  var rawClassification = rawState && rawState.rawClassification;
+  var statusSummary = rawState && rawState.lastSummarySanitized || "";
+  if (rawState && !rawState.measuredIndividually) {
+    statusSummary = statusSummary.replace(/(?: · | \()\d+ ms\)?$/, "");
+  }
+  if (rawState && isInconclusiveLegacyCategory_(rawState.category)) {
+    rawClassification = "NAO_VERIFICAVEL";
+  }
 
   var effectiveStatus = "DESCONHECIDO";
   var statusReason = "Aguardando primeira coleta periódica";
@@ -2287,8 +2360,8 @@ function resolveEffectiveEnvMonitoring_(envKey, config, settings, monState, main
       isStale = true;
       statusReason = "Última amostra expirou (>" + settings.staleMinutes + " min)";
     } else {
-      effectiveStatus = rawState.rawClassification || "DESCONHECIDO";
-      statusReason = rawState.lastSummarySanitized || "";
+      effectiveStatus = rawClassification || "DESCONHECIDO";
+      statusReason = statusSummary;
     }
   }
 
@@ -2306,10 +2379,10 @@ function resolveEffectiveEnvMonitoring_(envKey, config, settings, monState, main
     activeMaintenanceId: activeMaint ? activeMaint.id : null,
     activeMaintenanceTitle: activeMaint ? activeMaint.titulo : null,
     lastCheckedAt: rawState ? rawState.lastCheckedAt : null,
-    durationMs: rawState ? rawState.durationMs : null,
+    durationMs: rawState && rawState.measuredIndividually ? rawState.durationMs : null,
     httpStatus: rawState ? rawState.httpStatus : null,
     category: rawState ? rawState.category : null,
-    rawClassification: rawState ? rawState.rawClassification : null,
+    rawClassification: rawClassification || null,
     previousClassification: rawState ? rawState.previousClassification : null,
     lastErrorSanitized: rawState ? (rawState.lastErrorSanitized || "") : "",
     lastSuccessAt: rawState ? rawState.lastSuccessAt : null,
@@ -2365,6 +2438,7 @@ function buildMonitoringPayload_(includeAdminDetails) {
     else if (st === "DADOS_DESATUALIZADOS") { summary.stale++; summary.attention++; }
     else if (st === "MANUTENCAO") { summary.maintenance++; summary.attention++; }
     else if (st === "AUTENTICACAO_NECESSARIA") { summary.authRequired++; summary.nonVerifiable++; }
+    else if (st === "NAO_VERIFICAVEL") summary.nonVerifiable++;
     else if (st === "DESATIVADO") { summary.disabled++; summary.nonVerifiable++; }
     else { summary.unknown++; summary.nonVerifiable++; }
   }
@@ -2432,14 +2506,25 @@ function buildMonitoringPayload_(includeAdminDetails) {
     };
   });
 
+  var daily = histMeta.daily || {};
+  Object.keys(daily).forEach(function (day) {
+    Object.keys(daily[day]).forEach(function (envKey) {
+      daily[day][envKey] = normalizeDailyEvidence_(daily[day][envKey]);
+    });
+  });
+
   var payload = {
     schemaVersion: "2.1",
     minSamplesForAvailability: MONITOR_MIN_AVAIL_SAMPLES,
     settings: sanitizedSettings,
     summary: summary,
     environments: environments,
-    samples: samples.slice(0, 600),
-    daily: histMeta.daily || {},
+    samples: samples.slice(0, 600).map(function (sample) {
+      if (sample.l !== 1) sample.d = null;
+      if (isInconclusiveLegacyCategory_(sample.k)) sample.s = sample.r = "NAO_VERIFICAVEL";
+      return sample;
+    }),
+    daily: daily,
     incidents: includeAdminDetails ? incData.items.slice(0, 25) : publicIncidents,
     maintenances: includeAdminDetails ? maintData.items : publicMaintenances,
     quotaEstimate: {
@@ -2448,7 +2533,7 @@ function buildMonitoringPayload_(includeAdminDetails) {
       checksPerDayNominal: checksPerDayNominal,
       gasConsumerDailyUrlFetchLimit: 20000,
       followRedirects: false,
-      lastRunMode: monState.lastRunMode || null,
+      lastRunMode: monState.lastRunMode ? monState.lastRunMode.replace(/manual-admin:[^)]*/, "manual-admin") : null,
       nextEstimatedRunAt: nextRunAt
     }
   };
@@ -3054,15 +3139,15 @@ function apiUpdateMonitoringMaintenanceStatus(id, nextEstado, authToken) {
 }
 
 function apiRunManualMonitoringCheck(authToken) {
-  var auth = requireAdminAuth_(authToken);
-  var res = runMonitoringCycleInternal_("manual-admin:" + auth.email, true);
+  requireAdminAuth_(authToken);
+  var res = runMonitoringCycleInternal_("manual-admin", true);
   res.monitoring = buildMonitoringPayload_(true);
   return res;
 }
 
 function apiSyncMonitoringTrigger(authToken) {
   requireAdminAuth_(authToken);
-  var res = syncMonitoringTriggerInternal_(true);
+  var res = syncMonitoringTriggerInternal_();
   res.triggerDiagnostics = getTriggerDiagnostics_();
   return res;
 }

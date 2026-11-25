@@ -85,7 +85,7 @@ function createGasContext(options = {}) {
 
   const context = {
     console,
-    Date,
+    Date: options.date || Date,
     JSON,
     Math,
     Object,
@@ -183,6 +183,9 @@ function createGasContext(options = {}) {
       }
     },
     Session: {
+      getEffectiveUser() {
+        return { getEmail: () => options.effectiveEmail || 'deployer@example.com' };
+      },
       getActiveUser() {
         return {
           getEmail() {
@@ -298,6 +301,13 @@ function createGasContext(options = {}) {
     store,
     cacheStore,
     triggers,
+    runScheduled() {
+      if (!triggers.some((trigger) => trigger.handler === 'runScheduledMonitoringCheck_')) {
+        context.syncMonitoringTriggerInternal_();
+      }
+      const trigger = triggers.find((item) => item.handler === 'runScheduledMonitoringCheck_');
+      return context.runScheduledMonitoringCheck_({ triggerUid: trigger.id });
+    },
     getLockStats() { return { lockCalls, unlockCalls }; },
     setFetchHandler(fn) { mockFetchHandler = fn; },
     setFetchAllHandler(fn) { mockFetchAllHandler = fn; },
@@ -1027,7 +1037,7 @@ test('Motor de monitoramento 2.1: classificação HTTP 200, login 200, redirect 
   gas.ctx.apiSaveAdminConfig(cfg);
   const originalCppaUrl = cfg.cppaOficial.url;
 
-  const res = gas.ctx.runScheduledMonitoringCheck();
+  const res = gas.runScheduled();
   assert.equal(res.success, true);
   assert.equal(res.checkedCount, 5); // madreAudit desativado não é sondado!
   assert.equal(fetchedUrls.some((f) => f.url === cfg.madreAudit.url), false);
@@ -1041,11 +1051,11 @@ test('Motor de monitoramento 2.1: classificação HTTP 200, login 200, redirect 
   assert.equal(envs.cppaOficial.effectiveStatus, 'ACESSIVEL');
   assert.equal(envs.pepoaOficial.effectiveStatus, 'AUTENTICACAO_NECESSARIA');
   assert.equal(envs.madreOficial.effectiveStatus, 'AUTENTICACAO_NECESSARIA');
-  assert.equal(envs.cppaAudit.effectiveStatus, 'FALHA_VERIFICACAO'); // 1ª falha
+  assert.equal(envs.cppaAudit.effectiveStatus, 'NAO_VERIFICAVEL'); // acesso proibido
   assert.equal(envs.pepoaAudit.effectiveStatus, 'FALHA_VERIFICACAO'); // 1ª falha
   assert.equal(envs.madreAudit.effectiveStatus, 'DESATIVADO');
   assert.equal(boot.monitoring.summary.accessible, 1);
-  assert.equal(boot.monitoring.summary.nonVerifiable, 3); // 2 auth + 1 desativado (nunca contados como sucesso!)
+  assert.equal(boot.monitoring.summary.nonVerifiable, 4); // 2 auth + 1 proibido + 1 desativado (nunca contados como sucesso!)
   assert.equal(boot.monitoring.incidents.length, 0); // ainda na 1ª falha
 
   // Não persistir conteúdo integral/tokens/cookies
@@ -1072,11 +1082,11 @@ test('Motor de monitoramento 2.1: classificação HTTP 200, login 200, redirect 
     return { status: 302, headers: { Location: 'https://accounts.google.com/ServiceLogin' } };
   });
 
-  const res2 = gas.ctx.runScheduledMonitoringCheck();
+  const res2 = gas.runScheduled();
   assert.equal(res2.mode, 'isolated_fetch'); // fallback automático quando fetchAll falha
   const envs2 = gas.ctx.apiGetPublicBootstrap().monitoring.environments;
   assert.equal(envs2.cppaOficial.effectiveStatus, 'RESPOSTA_LENTA');
-  assert.equal(envs2.cppaAudit.effectiveStatus, 'INDISPONIVEL');
+  assert.equal(envs2.cppaAudit.effectiveStatus, 'FALHA_VERIFICACAO');
   assert.equal(envs2.pepoaAudit.effectiveStatus, 'INDISPONIVEL');
   assert.equal(envs2.cppaAudit.lastErrorSanitized.includes('token=abc'), false);
 });
@@ -1095,13 +1105,13 @@ test('Incidentes consecutivos, estados administrativos e regra de recuperação 
   });
 
   // 1ª falha -> FALHA_VERIFICACAO, sem incidente
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
   let mon = gas.ctx.apiGetPublicBootstrap().monitoring;
   assert.equal(mon.environments.cppaOficial.effectiveStatus, 'FALHA_VERIFICACAO');
   assert.equal(mon.incidents.length, 0);
 
   // 2ª falha consecutiva -> INDISPONIVEL, abre incidente INVESTIGACAO
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
   mon = gas.ctx.apiGetPublicBootstrap().monitoring;
   assert.equal(mon.environments.cppaOficial.effectiveStatus, 'INDISPONIVEL');
   assert.equal(mon.incidents.length, 1);
@@ -1120,14 +1130,14 @@ test('Incidentes consecutivos, estados administrativos e regra de recuperação 
 
   // Regra de recuperação padrão = 2 sucessos consecutivos: 1º sucesso ainda mantém INDISPONIVEL (recoveringCount = 1)
   cppaOk = true;
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
   mon = gas.ctx.apiGetPublicBootstrap().monitoring;
   assert.equal(mon.environments.cppaOficial.effectiveStatus, 'INDISPONIVEL');
   assert.equal(mon.environments.cppaOficial.recoveringCount, 1);
   assert.equal(mon.incidents[0].estado, 'CONFIRMADO');
 
   // 2º sucesso consecutivo -> recupera para ACESSIVEL e resolve incidente
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
   mon = gas.ctx.apiGetPublicBootstrap().monitoring;
   assert.equal(mon.environments.cppaOficial.effectiveStatus, 'ACESSIVEL');
   assert.equal(mon.incidents[0].estado, 'RESOLVIDO');
@@ -1135,8 +1145,8 @@ test('Incidentes consecutivos, estados administrativos e regra de recuperação 
 
   // Novo incidente encerrado administrativamente
   cppaOk = false;
-  gas.ctx.runScheduledMonitoringCheck();
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
+  gas.runScheduled();
   mon = gas.ctx.apiGetPublicBootstrap().monitoring;
   const inc2 = mon.incidents.find((i) => i.estado === 'INVESTIGACAO');
   assert.ok(inc2);
@@ -1150,7 +1160,7 @@ test('Incidentes consecutivos, estados administrativos e regra de recuperação 
 
 test('Manutenções CRUD (America/Sao_Paulo) preservam evidências reais e retornam ao encerrar; expiração marca DADOS_DESATUALIZADOS', () => {
   const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
 
   const startLocal = new Date(Date.now() - 3600000 - 3 * 3600000).toISOString().slice(0, 16); // -1h em BRT (-03:00)
   const endLocal = new Date(Date.now() + 3600000 - 3 * 3600000).toISOString().slice(0, 16);   // +1h em BRT (-03:00)
@@ -1200,22 +1210,22 @@ test('Retenção, limites PropertiesService (<7800 B), agregação diária, lock
   const sync1 = gas.ctx.apiSyncMonitoringTrigger();
   assert.equal(sync1.success, true);
   assert.equal(sync1.installedCount, 1);
-  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck_').length, 1);
   assert.equal(gas.triggers.filter((t) => t.handler === 'otherTriggerHandler').length, 1);
 
   // Salvar mesma frequência é idempotente (não duplica)
   gas.ctx.apiSaveMonitoringSettings({ intervalMinutes: 15 });
-  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck_').length, 1);
 
   // Pausar monitoramento remove trigger de monitoramento
   gas.ctx.apiSaveMonitoringSettings({ enabled: false });
-  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 0);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck_').length, 0);
   gas.ctx.apiSaveMonitoringSettings({ enabled: true });
-  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck_').length, 1);
 
   // Executar 35 ciclos para testar segmentação, retenção e agregação diária dentro de <=7800 bytes por propriedade
   for (let i = 0; i < 35; i++) {
-    gas.ctx.runScheduledMonitoringCheck();
+    gas.runScheduled();
   }
   const bootAdmin = gas.ctx.apiGetAdminBootstrap();
   const storage = bootAdmin.monitoring.storageStats;
@@ -1288,7 +1298,7 @@ test('Autorização fail-closed no monitoramento, doPost admin_monitoring_*, pre
 });
 
 test('Cliente Portal 2.1: painel Status, amostra insuficiente, disponibilidade observada e lacunas explícitas', () => {
-  const { ctx } = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  const { ctx, runScheduled } = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
   const portalHtml = ctx.doGet({ parameter: { view: 'portal' } }).getContent();
   const harness = createDomHarness(portalHtml);
 
@@ -1315,8 +1325,8 @@ test('Cliente Portal 2.1: painel Status, amostra insuficiente, disponibilidade o
 
   // Simular 2 amostras apenas para cppaOficial (abaixo do mínimo 4 -> Amostra insuficiente) e 4 para pepoaAudit
   const now = Date.now();
-  ctx.runScheduledMonitoringCheck();
-  ctx.runScheduledMonitoringCheck();
+  runScheduled();
+  runScheduled();
 
   const boot = ctx.apiGetPublicBootstrap();
   // Injetar 2 amostras extras em memória no mock de bootstrap apenas para validar o cálculo >= 4 vs < 4 no cliente
@@ -1368,7 +1378,7 @@ test('UrlFetchApp.fetchAll lote bem-sucedido e contrato público ?action=status 
   });
 
   gas.ctx.apiSaveMonitoringSettings({ useFetchAll: true });
-  const res = gas.ctx.runScheduledMonitoringCheck();
+  const res = gas.runScheduled();
   assert.equal(res.success, true);
   assert.equal(res.mode, 'fetchAll');
   assert.equal(fetchAllCalls, 1);
@@ -1398,8 +1408,8 @@ test('Cliente Admin 2.1: renderização de diagnóstico, cotas, incidentes, manu
     }
   });
 
-  gas.ctx.runScheduledMonitoringCheck();
-  gas.ctx.runScheduledMonitoringCheck();
+  gas.runScheduled();
+  gas.runScheduled();
   gas.ctx.apiSyncMonitoringTrigger();
   gas.ctx.apiSaveMonitoringMaintenance({
     titulo: 'Janela preventiva teste',
@@ -1461,4 +1471,163 @@ test('Cliente Admin 2.1: renderização de diagnóstico, cotas, incidentes, manu
   assert.ok(harness.elements.monEnvTogglesWrap.innerHTML.includes('AUTENTICACAO_NECESSARIA'));
   assert.ok(harness.elements.monIncidentsWrap.innerHTML.includes('INVESTIGACAO'));
   assert.ok(harness.elements.monMaintListWrap.innerHTML.includes('Janela preventiva teste'));
+});
+
+test('A coleta anônima fica bloqueada antes de sondar ou persistir', () => {
+  let fetches = 0;
+  const { ctx, store, setUserEmail } = createGasContext({
+    fetchHandler() { fetches++; return { status: 200 }; }
+  });
+  assert.equal(typeof ctx.runScheduledMonitoringCheck, 'undefined');
+  assert.equal(ctx.runScheduledMonitoringCheck_({ triggerUid: 'forged' }).skipped, true);
+  assert.throws(() => ctx.apiRunManualMonitoringCheck(), /Acesso negado/);
+  assert.equal(fetches, 0);
+  assert.equal(store.MONITOR_STATE, undefined);
+  setUserEmail('lukaslaurino@gmail.com');
+  assert.equal(ctx.apiRunManualMonitoringCheck().checkedCount, 6);
+  assert.equal(fetches, 6);
+  assert.equal(Object.keys(JSON.parse(store.MONITOR_STATE).environments).length, 6);
+});
+
+test('A sonda roda fora do lock e ignora um ciclo simultâneo antes da rede', () => {
+  let fetches = 0;
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchHandler() {
+      fetches++;
+      const { lockCalls, unlockCalls } = gas.getLockStats();
+      assert.equal(lockCalls, unlockCalls);
+      if (fetches === 1) assert.equal(gas.ctx.apiRunManualMonitoringCheck().skipped, true);
+      return { status: 200 };
+    }
+  });
+  const result = gas.ctx.apiRunManualMonitoringCheck();
+  assert.equal(result.checkedCount, 6);
+  assert.equal(fetches, 6);
+  assert.equal(result.monitoring.samples.length, 6);
+});
+
+test('Um ciclo atrasado perde a concessão e não sobrescreve o sucessor', () => {
+  const originalTime = Date.now();
+  let time = originalTime;
+  let successorStarted = false;
+  let successorRunning = false;
+  class Clock extends Date {
+    constructor(value = time) { super(value); }
+    static now() { return time; }
+  }
+  const gas = createGasContext({
+    date: Clock,
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchHandler() {
+      if (!successorStarted) {
+        successorStarted = true;
+        time += 8 * 60000;
+        successorRunning = true;
+        assert.equal(gas.ctx.apiRunManualMonitoringCheck().checkedCount, 6);
+        successorRunning = false;
+      }
+      return { status: successorRunning ? 200 : 503 };
+    }
+  });
+  const result = gas.ctx.apiRunManualMonitoringCheck();
+  assert.equal(result.skipped, true);
+  assert.equal(result.monitoring.environments.cppaOficial.httpStatus, 200);
+  assert.equal(result.monitoring.samples.length, 6);
+  assert.equal(result.monitoring.samples[0].t, new Date(originalTime + 8 * 60000).toISOString());
+});
+
+test('A sincronização migra gatilhos antigos e mantém o ID do único gatilho válido', () => {
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    initialTriggers: [
+      { id: 'old', handler: 'runScheduledMonitoringCheck' },
+      { id: 'other', handler: 'other' }
+    ]
+  });
+  const first = gas.ctx.apiSyncMonitoringTrigger();
+  const second = gas.ctx.apiSyncMonitoringTrigger();
+  assert.equal(first.success, true);
+  assert.equal(second.action, 'kept_existing');
+  const trigger = gas.triggers.find((item) => item.handler === 'runScheduledMonitoringCheck_');
+  assert.deepEqual(gas.triggers.map((item) => item.id), ['other', trigger.id]);
+  assert.equal(trigger.intervalMinutes, 15);
+  assert.equal(gas.ctx.runScheduledMonitoringCheck_({ triggerUid: 'old' }).skipped, true);
+  assert.equal(gas.ctx.runScheduledMonitoringCheck_({ triggerUid: trigger.id }).checkedCount, 6);
+});
+
+test('Redirect técnico e 403 sem login são inconclusivos, sem latência individual de lote', () => {
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchAllHandler(requests) {
+      return requests.map((_, i) => i % 2 === 0
+        ? { status: 302, headers: { Location: 'https://script.googleusercontent.com/macros/echo' } }
+        : { status: 403 });
+    }
+  });
+  gas.ctx.apiSaveMonitoringSettings({ useFetchAll: true });
+  gas.ctx.apiRunManualMonitoringCheck();
+  const { monitoring } = gas.ctx.apiRunManualMonitoringCheck();
+  assert.equal(monitoring.summary.nonVerifiable, 6);
+  assert.equal(monitoring.summary.accessible, 0);
+  assert.equal(monitoring.summary.unavailable, 0);
+  assert.equal(monitoring.incidents.length, 0);
+  assert.ok(monitoring.samples.every((sample) => sample.d === null));
+  assert.ok(Object.values(monitoring.environments).every((env) => env.durationMs === null));
+});
+
+test('A coleta preserva CONFIG_LINKS, histórico de releases e homologação', () => {
+  const { ctx, store } = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  ctx.apiSaveAdminConfig(ctx.getConfig());
+  ctx.apiRecordAdminReleaseEvent({
+    schemaVersion: '2.0',
+    eventId: 'evt-monitor-no-release-mutation',
+    deploymentId: ctx.getConfig().pepoaAudit.url.split('/')[5],
+    unidade: 'PEPOA',
+    ambiente: 'AUDIT',
+    tipoEvento: 'publish',
+    versao: '4.38.9',
+    commit: '2c6169b',
+    deploymentVersion: '118',
+    url: ctx.getConfig().pepoaAudit.url,
+    publicadoEm: new Date().toISOString(),
+    estadoHomologacao: 'EM_HOMOLOGACAO'
+  });
+  const before = ctx.apiGetPublicBootstrap();
+  const releaseKeys = Object.keys(store).filter((key) => key.startsWith('SISFAR_RELEASE'));
+  const protectedKeys = ['CONFIG_LINKS', ...releaseKeys];
+  const original = protectedKeys.map((key) => store[key]);
+  assert.equal(ctx.apiRunManualMonitoringCheck().checkedCount, 6);
+  const after = ctx.apiGetPublicBootstrap();
+  assert.deepEqual(protectedKeys.map((key) => store[key]), original);
+  assert.deepEqual(after.releaseHistory, before.releaseHistory);
+  assert.equal(after.releaseState.environments.pepoaAudit.estadoHomologacao, 'EM_HOMOLOGACAO');
+});
+
+test('A leitura legado omite duração sem origem e corrige redirecionamento agregado', () => {
+  const t = new Date().toISOString();
+  const day = t.slice(0, 10);
+  const key = 'MONITOR_HISTORY_SEG_0';
+  const category = 'HTTP_3XX_REDIRECT_SLOW';
+  const gas = createGasContext({
+    initialProperties: {
+      MONITOR_STATE: JSON.stringify({ lastRunMode: 'fetchAll (clock-trigger)', environments: {
+        cppaOficial: { lastCheckedAt: t, durationMs: 9000, rawClassification: 'RESPOSTA_LENTA',
+          category, lastSummarySanitized: 'HTTP 302 — Redirecionamento técnico · 9000 ms' }
+      }}),
+      MONITOR_HISTORY: JSON.stringify({ segments: [key], daily: {
+        [day]: { cppaOficial: { count: 4, ok: 3, slow: 1, fail: 0, auth: 0, sumMs: 36000 } }
+      }}),
+      [key]: JSON.stringify([{ e: 'cppaOficial', t, s: 'RESPOSTA_LENTA', r: 'RESPOSTA_LENTA', d: 9000, k: category }])
+    }
+  });
+  const { monitoring } = gas.ctx.apiGetPublicBootstrap();
+  const env = monitoring.environments.cppaOficial;
+  assert.equal(env.effectiveStatus, 'NAO_VERIFICAVEL');
+  assert.equal(env.durationMs, null);
+  assert.doesNotMatch(env.statusReason, /9000/);
+  assert.equal(monitoring.samples[0].d, null);
+  assert.equal(monitoring.daily[day].cppaOficial.ok, 0);
+  assert.equal(monitoring.daily[day].cppaOficial.unknown, 4);
+  assert.match(gas.store[key], /9000/);
 });

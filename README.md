@@ -40,23 +40,26 @@ Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia P
 
 - **Escopo estritamente HTTP**: `UrlFetchApp` executa sondas periódicas apenas nos ambientes ativos em `CONFIG_LINKS` e habilitados no painel, com `followRedirects: false` e `muteHttpExceptions: true`. **HTTP 200 não comprova função clínica** (não realiza login clínico nem acessa pacientes, APAC, prescrições ou planilhas).
 - **Classificações**:
-  - `ACESSIVEL`: HTTP 2xx (ou 3xx técnico não-login) abaixo do limiar de lentidão (`slowThresholdMs`, padrão 3000 ms).
+  - `ACESSIVEL`: HTTP 2xx sem página de login ou erro abaixo do limiar de lentidão (`slowThresholdMs`, padrão 3000 ms).
   - `RESPOSTA_LENTA`: HTTP acessível com duração `>= slowThresholdMs`.
-  - `FALHA_VERIFICACAO`: 1ª falha HTTP (403/404/5xx/página de erro) ou erro de rede/timeout antes de atingir o limiar de incidente.
+  - `FALHA_VERIFICACAO`: 1ª falha HTTP (404/5xx/página de erro) ou erro de rede/timeout antes de atingir o limiar de incidente.
   - `INDISPONIVEL`: após falhas consecutivas `>= failureThreshold` (padrão 2), abrindo incidente agrupado (`INVESTIGACAO` → `CONFIRMADO` → `RESOLVIDO`/`ENCERRADO_ADMIN`). Recuperação configurável via `recoverySuccessThreshold` (padrão 2 sucessos).
   - `AUTENTICACAO_NECESSARIA`: HTTP 401, redirecionamento (3xx) para `accounts.google.com` ou página de login Google HTTP 200. Contabilizado em **Não verificáveis** (nunca como sucesso nem como queda).
+  - `NAO_VERIFICAVEL`: redirecionamento técnico, HTTP 403, ou sonda sem permissão/cota. Sem inferência de disponibilidade ou homologação.
   - `MANUTENCAO`: janela ativa cadastrada (exibição `America/Sao_Paulo`). Preserva evidências reais em `MONITOR_STATE` e retorna a elas automaticamente ao encerrar ou expirar.
   - `DESATIVADO`: desativado em `CONFIG_LINKS` ou individualmente no monitoramento.
   - `DESCONHECIDO`: sem amostra coletada.
   - `DADOS_DESATUALIZADOS`: última amostra anterior a `staleMinutes` (padrão 45 min).
 - **Avaliação `UrlFetchApp.fetchAll` vs `fetch` isolado**:
-  - `fetchAll` reduz o tempo total do lote (~2s vs ~8-10s), porém no GAS atribui o tempo total do lote a todas as respostas e lança exceção no lote inteiro se 1 endpoint falhar por DNS/rede. Por padrão usa-se `fetch` isolado por endpoint (latência real individual e falha isolada), com suporte opcional a `useFetchAll` + fallback automático para sondagem isolada.
+  - O padrão é `fetch` isolado, que mede a duração de cada requisição. Com `useFetchAll`, a duração individual fica sem valor. Uma exceção no lote aciona o fallback para sondas isoladas.
 - **Cotas e Limites Reais (Google Apps Script)**:
   - **UrlFetchApp**: cota diária nominal de conta Google padrão = **20.000 chamadas/dia** (Workspace até 100.000/dia). Com 6 ambientes a cada **15 minutos** e `followRedirects: false`, o consumo nominal é **576 verificações/dia** (~2,88% da cota padrão).
   - **Triggers e Timeout**: limite de execução por invocação de time-based trigger = **6 minutos**; `UrlFetchApp` possui timeout interno de ~60s por requisição (não configurável por parâmetro no GAS).
-  - **Concorrência**: `runScheduledMonitoringCheck()` e todas escritas usam `LockService.getScriptLock()` (`waitLock(10000)`), mantendo I/O de rede fora do lock.
+  - **Concorrência**: uma concessão de sete minutos registrada sob `ScriptLock` impede ciclos simultâneos. A rede roda fora do lock. A gravação confere a concessão e a configuração de origem antes de persistir.
   - **Armazenamento `PropertiesService`**: teto de **9 KB por propriedade** (limite seguro adotado `7800` bytes) e **500 KB totais** por projeto. Estruturas separadas: `MONITOR_SETTINGS`, `MONITOR_STATE`, `MONITOR_HISTORY` (+ `MONITOR_HISTORY_SEG_0..5` e agregação diária limitada), `MONITOR_INCIDENTS` e `MONITOR_MAINTENANCES`, totalizando teto máximo ~70 KB.
-- **Disponibilidade Observada**: exibida somente com `>= 4` amostras verificáveis na janela, mostrando cobertura real e critérios. Lacunas, autenticação e manutenção nunca contam como sucesso e não constituem SLA.
+- **Disponibilidade Observada**: exibida somente com `>= 4` amostras verificáveis na janela, mostrando cobertura real e critérios. Lacunas, autenticação, verificações inconclusivas e manutenção ficam fora do cálculo. Agregados diários legados sem classificação verificável aparecem como amostras inconclusivas. A métrica mede respostas HTTP.
+
+- **Gatilho** — `runScheduledMonitoringCheck_` aceita o identificador do gatilho registrado. A conta publicadora pode executar `configurarTriggerMonitoramento_` no editor para conceder as permissões do Apps Script e sincronizar o gatilho. A sincronização migra os gatilhos antigos visíveis à conta instaladora. A coleta manual pelo portal exige administrador autenticado.
 
 ---
 
