@@ -847,6 +847,205 @@
 
     .empty-state p { font-size: 13px; }
 
+    /* ==================== MONITORAMENTO 2.1 ==================== */
+    .mon-alert-banner {
+      background: var(--audit-soft);
+      border: 1px solid var(--audit-border);
+      color: var(--text-primary);
+      border-radius: var(--radius-md);
+      padding: 0.7rem 1rem;
+      margin-bottom: 1.1rem;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .mon-alert-banner.visible { display: flex; }
+    .mon-alert-banner.severe {
+      background: var(--danger-soft);
+      border-color: var(--danger-border);
+    }
+    .mon-alert-left {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      min-width: 0;
+    }
+    .mon-alert-left svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--audit-color); }
+    .mon-alert-banner.severe .mon-alert-left svg { color: var(--danger-color); }
+
+    .env-mon-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.65rem;
+      font-size: 11px;
+    }
+
+    .mon-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.32rem;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .mon-pill svg { width: 12px; height: 12px; flex-shrink: 0; }
+    .mon-pill.st-acessivel { background: var(--oficial-soft); color: var(--oficial-color); border-color: var(--oficial-border); }
+    .mon-pill.st-lenta { background: var(--audit-soft); color: var(--audit-color); border-color: var(--audit-border); }
+    .mon-pill.st-falha { background: var(--audit-soft); color: var(--audit-color); border-color: var(--audit-border); }
+    .mon-pill.st-indisponivel { background: var(--danger-soft); color: var(--danger-color); border-color: var(--danger-border); }
+    .mon-pill.st-auth { background: var(--accent-secondary-soft); color: var(--accent-secondary); border-color: rgba(3, 105, 161, 0.28); }
+    .mon-pill.st-manutencao { background: var(--audit-soft); color: var(--audit-color); border-color: var(--audit-border); }
+    .mon-pill.st-desativado { background: var(--neutral-soft); color: var(--neutral-text); border-color: var(--border-color); }
+    .mon-pill.st-desconhecido { background: var(--neutral-soft); color: var(--neutral-text); border-color: var(--border-color); }
+    .mon-pill.st-desatualizado { background: var(--audit-soft); color: var(--audit-color); border-color: var(--audit-border); }
+
+    .mon-meta {
+      color: var(--text-secondary);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .status-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .method-callout {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-left: 3px solid var(--accent-secondary);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+    }
+
+    .avail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+    .avail-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .avail-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .avail-pct {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .avail-pct.insufficient {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .avail-meta {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .timeline-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .timeline-row:last-child { border-bottom: none; }
+    .timeline-row-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      font-size: 12.5px;
+    }
+    .timeline-strip {
+      display: flex;
+      gap: 2px;
+      align-items: stretch;
+      height: 22px;
+      width: 100%;
+    }
+    .tl-slot {
+      flex: 1 1 0;
+      min-width: 4px;
+      border-radius: 3px;
+      position: relative;
+      border: 1px solid transparent;
+    }
+    .tl-slot.st-acessivel { background: var(--oficial-color); }
+    .tl-slot.st-lenta { background: var(--audit-color); }
+    .tl-slot.st-falha { background: var(--audit-color); opacity: 0.75; }
+    .tl-slot.st-indisponivel { background: var(--danger-color); }
+    .tl-slot.st-auth { background: var(--accent-secondary); }
+    .tl-slot.st-manutencao { background: repeating-linear-gradient(45deg, var(--audit-color), var(--audit-color) 3px, transparent 3px, transparent 6px); border-color: var(--audit-border); }
+    .tl-slot.st-lacuna {
+      background: repeating-linear-gradient(-45deg, var(--neutral-soft), var(--neutral-soft) 3px, var(--border-color) 3px, var(--border-color) 5px);
+      border-color: var(--border-color);
+    }
+    .timeline-legend {
+      display: flex;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      margin-top: 0.65rem;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+    .svg-chart-wrap {
+      width: 100%;
+      overflow-x: auto;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+    }
+    .svg-chart-wrap svg {
+      width: 100%;
+      min-width: 520px;
+      height: auto;
+      display: block;
+    }
+
+    @media (max-width: 1180px) {
+      .status-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .avail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 768px) {
+      .status-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .avail-grid { grid-template-columns: 1fr; }
+    }
+
     footer {
       border-top: 1px solid var(--border-color);
       background: var(--bg-surface);
@@ -919,6 +1118,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Início</span>
           </button>
+          <button type="button" class="nav-btn" data-view="status" role="tab" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Status</span>
+            <span class="nav-count" id="navCountStatus">0</span>
+          </button>
           <button type="button" class="nav-btn" data-view="atualizacoes" role="tab" aria-selected="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
             <span>Atualizações</span>
@@ -961,6 +1165,14 @@
     <div class="obs-banner" id="obsBanner">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       <span id="obsBannerText"></span>
+    </div>
+
+    <div class="mon-alert-banner" id="activeIncidentsBanner" role="region" aria-label="Aviso discreto de monitoramento">
+      <div class="mon-alert-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span id="activeIncidentsBannerText"></span>
+      </div>
+      <button type="button" id="btnGoToStatusFromBanner" class="btn-ghost" style="padding:0.35rem 0.7rem;font-size:12px;">Ver painel Status →</button>
     </div>
 
     <section class="kpi-grid" aria-label="Indicadores reais do portal">
@@ -1021,6 +1233,10 @@
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-cppa-oficial">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-cppa-oficial">Sem registro</span></div>
             </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-cppa-oficial">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-cppa-oficial">Sem amostra</span>
+            </div>
             <a id="link-cppa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
               <span id="label-cppa-oficial">Acessar Ambiente Oficial</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1038,6 +1254,10 @@
               <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-cppa-audit">—</span></div>
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-cppa-audit">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-cppa-audit">Sem registro</span></div>
+            </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-cppa-audit">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-cppa-audit">Sem amostra</span>
             </div>
             <a id="link-cppa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
               <span id="label-cppa-audit">Acessar Homologação</span>
@@ -1070,6 +1290,10 @@
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-pepoa-oficial">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-pepoa-oficial">Sem registro</span></div>
             </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-pepoa-oficial">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-pepoa-oficial">Sem amostra</span>
+            </div>
             <a id="link-pepoa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
               <span id="label-pepoa-oficial">Acessar Ambiente Oficial</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1087,6 +1311,10 @@
               <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-pepoa-audit">—</span></div>
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-pepoa-audit">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-pepoa-audit">Sem registro</span></div>
+            </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-pepoa-audit">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-pepoa-audit">Sem amostra</span>
             </div>
             <a id="link-pepoa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
               <span id="label-pepoa-audit">Acessar Homologação</span>
@@ -1119,6 +1347,10 @@
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-madre-oficial">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-madre-oficial">Sem registro</span></div>
             </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-madre-oficial">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-madre-oficial">Sem amostra</span>
+            </div>
             <a id="link-madre-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
               <span id="label-madre-oficial">Acessar Ambiente Oficial</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -1137,12 +1369,139 @@
               <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-madre-audit">—</span></div>
               <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-madre-audit">Sem registro</span></div>
             </div>
+            <div class="env-mon-bar">
+              <span class="mon-pill st-desconhecido" id="mon-status-madre-audit">Desconhecido</span>
+              <span class="mon-meta" id="mon-check-madre-audit">Sem amostra</span>
+            </div>
             <a id="link-madre-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
               <span id="label-madre-audit">Acessar Homologação</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
           </div>
         </article>
+      </div>
+    </section>
+
+    <!-- VIEW: STATUS (MONITORAMENTO OPERACIONAL) -->
+    <section id="view-status" class="view-panel">
+      <div class="status-kpi-grid" aria-label="Resumo operacional de monitoramento">
+        <div class="kpi-card">
+          <div class="kpi-label">Monitorados</div>
+          <div class="kpi-value" id="statusKpiMonitored">—</div>
+          <div class="kpi-sub" id="statusKpiMonitoredSub">Ativos no motor</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Acessíveis (HTTP)</div>
+          <div class="kpi-value" id="statusKpiAccessible">0</div>
+          <div class="kpi-sub">Resposta HTTP sem login</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Atenção</div>
+          <div class="kpi-value" id="statusKpiAttention">0</div>
+          <div class="kpi-sub" id="statusKpiAttentionSub">Lento, falha, manutenção ou expirado</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Incidentes Ativos</div>
+          <div class="kpi-value" id="statusKpiIncidents">0</div>
+          <div class="kpi-sub">Falhas consecutivas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Não Verificáveis</div>
+          <div class="kpi-value" id="statusKpiNonVerifiable">0</div>
+          <div class="kpi-sub" id="statusKpiNonVerifiableSub">Autenticação, desativado ou sem amostra</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Última Execução</div>
+          <div class="kpi-value" id="statusKpiLastRun" style="font-size:14px;">Sem execução</div>
+          <div class="kpi-sub" id="statusKpiLastRunSub">Motor periódico Apps Script</div>
+        </div>
+      </div>
+
+      <div class="method-callout">
+        <strong>Escopo e Critérios de Monitoramento:</strong> Sondas periódicas nativas via <code>UrlFetchApp</code> (sem redirects, sem login clínico, sem acesso a pacientes, APAC, prescrições ou planilhas). <strong>HTTP 200 não comprova função clínica</strong> — atesta apenas acessibilidade HTTP do endpoint. Ambientes protegidos por login Google (HTTP 200 de login ou redirecionamento para <code>accounts.google.com</code>) são classificados como <strong>Autenticação necessária</strong> e contabilizados em <em>Não verificáveis</em>. Lacunas de coleta, manutenção e autenticação nunca são contabilizadas como sucesso e não constituem SLA.
+      </div>
+
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Situação por Ambiente
+          </h2>
+          <span class="section-note" id="statusEnvTableNote">Estados com ícone e texto · Horário America/Sao_Paulo</span>
+        </div>
+        <div id="statusEnvTableContainer"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Disponibilidade Observada, Timeline e Latência
+          </h2>
+          <span class="section-note" id="statusFilterSummary">Janela e cobertura reais</span>
+        </div>
+
+        <div class="filters-bar">
+          <div class="filter-group">
+            <label for="filterStatusUnit">Unidade</label>
+            <select id="filterStatusUnit" class="filter-control">
+              <option value="TODAS">Todas</option>
+              <option value="CPPA">CPPA</option>
+              <option value="PEPOA">PEPOA</option>
+              <option value="MADRE">MADRE</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterStatusEnv">Ambiente</label>
+            <select id="filterStatusEnv" class="filter-control">
+              <option value="TODOS">Todos</option>
+              <option value="OFICIAL">OFICIAL</option>
+              <option value="AUDIT">AUDIT</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterStatusPeriod">Período</label>
+            <select id="filterStatusPeriod" class="filter-control">
+              <option value="6h">Últimas 6 horas</option>
+              <option value="24h" selected>Últimas 24 horas</option>
+              <option value="7d">Últimos 7 dias (diário)</option>
+              <option value="14d">Últimos 14 dias (diário)</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button type="button" id="btnClearStatusFilters" class="btn-ghost">Limpar filtros</button>
+          </div>
+        </div>
+
+        <div id="statusAvailabilityContainer" style="margin-bottom:1.25rem;"></div>
+
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:0.5rem;">Timeline Real (com lacunas explícitas)</h3>
+        <div id="statusTimelineContainer" style="margin-bottom:1.25rem;"></div>
+
+        <h3 style="font-size:13px;font-weight:700;margin-bottom:0.5rem;">Gráfico de Latência Observada (ms)</h3>
+        <div id="statusSvgChartContainer"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Incidentes Registrados
+          </h2>
+          <span class="section-note" id="statusIncidentsNote">Agrupamento automático por falhas consecutivas</span>
+        </div>
+        <div id="statusIncidentsContainer"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            Janelas de Manutenção
+          </h2>
+          <span class="section-note">Exibição em America/Sao_Paulo · Preserva evidências reais</span>
+        </div>
+        <div id="statusMaintenancesContainer"></div>
       </div>
     </section>
 
@@ -1253,12 +1612,12 @@
       var INITIAL_PORTAL_DATA = "__SISFAR_INITIAL_DATA__";
 
       var MAP = {
-        cppaOficial:  { unit: 'CPPA',  card: 'card-cppa-oficial',  link: 'link-cppa-oficial',  name: 'name-cppa-oficial',  badge: 'badge-cppa-oficial',  label: 'label-cppa-oficial',  ver: 'ver-cppa-oficial',  dep: 'dep-cppa-oficial',  date: 'date-cppa-oficial',  state: 'state-cppa-oficial',  type: 'oficial', defaultOrder: 1 },
-        pepoaOficial: { unit: 'PEPOA', card: 'card-pepoa-oficial', link: 'link-pepoa-oficial', name: 'name-pepoa-oficial', badge: 'badge-pepoa-oficial', label: 'label-pepoa-oficial', ver: 'ver-pepoa-oficial', dep: 'dep-pepoa-oficial', date: 'date-pepoa-oficial', state: 'state-pepoa-oficial', type: 'oficial', defaultOrder: 2 },
-        madreOficial: { unit: 'MADRE', card: 'card-madre-oficial', link: 'link-madre-oficial', name: 'name-madre-oficial', badge: 'badge-madre-oficial', label: 'label-madre-oficial', ver: 'ver-madre-oficial', dep: 'dep-madre-oficial', date: 'date-madre-oficial', state: 'state-madre-oficial', type: 'oficial', defaultOrder: 3 },
-        cppaAudit:    { unit: 'CPPA',  card: 'card-cppa-audit',    link: 'link-cppa-audit',    name: 'name-cppa-audit',    badge: 'badge-cppa-audit',    label: 'label-cppa-audit',    ver: 'ver-cppa-audit',    dep: 'dep-cppa-audit',    date: 'date-cppa-audit',    state: 'state-cppa-audit',    type: 'audit',   defaultOrder: 4 },
-        pepoaAudit:   { unit: 'PEPOA', card: 'card-pepoa-audit',   link: 'link-pepoa-audit',   name: 'name-pepoa-audit',   badge: 'badge-pepoa-audit',   label: 'label-pepoa-audit',   ver: 'ver-pepoa-audit',   dep: 'dep-pepoa-audit',   date: 'date-pepoa-audit',   state: 'state-pepoa-audit',   type: 'audit',   defaultOrder: 5 },
-        madreAudit:   { unit: 'MADRE', card: 'card-madre-audit',   link: 'link-madre-audit',   name: 'name-madre-audit',   badge: 'badge-madre-audit',   label: 'label-madre-audit',   ver: 'ver-madre-audit',   dep: 'dep-madre-audit',   date: 'date-madre-audit',   state: 'state-madre-audit',   type: 'audit',   defaultOrder: 6 }
+        cppaOficial:  { unit: 'CPPA',  card: 'card-cppa-oficial',  link: 'link-cppa-oficial',  name: 'name-cppa-oficial',  badge: 'badge-cppa-oficial',  label: 'label-cppa-oficial',  ver: 'ver-cppa-oficial',  dep: 'dep-cppa-oficial',  date: 'date-cppa-oficial',  state: 'state-cppa-oficial',  monStatus: 'mon-status-cppa-oficial',  monCheck: 'mon-check-cppa-oficial',  type: 'oficial', defaultOrder: 1 },
+        pepoaOficial: { unit: 'PEPOA', card: 'card-pepoa-oficial', link: 'link-pepoa-oficial', name: 'name-pepoa-oficial', badge: 'badge-pepoa-oficial', label: 'label-pepoa-oficial', ver: 'ver-pepoa-oficial', dep: 'dep-pepoa-oficial', date: 'date-pepoa-oficial', state: 'state-pepoa-oficial', monStatus: 'mon-status-pepoa-oficial', monCheck: 'mon-check-pepoa-oficial', type: 'oficial', defaultOrder: 2 },
+        madreOficial: { unit: 'MADRE', card: 'card-madre-oficial', link: 'link-madre-oficial', name: 'name-madre-oficial', badge: 'badge-madre-oficial', label: 'label-madre-oficial', ver: 'ver-madre-oficial', dep: 'dep-madre-oficial', date: 'date-madre-oficial', state: 'state-madre-oficial', monStatus: 'mon-status-madre-oficial', monCheck: 'mon-check-madre-oficial', type: 'oficial', defaultOrder: 3 },
+        cppaAudit:    { unit: 'CPPA',  card: 'card-cppa-audit',    link: 'link-cppa-audit',    name: 'name-cppa-audit',    badge: 'badge-cppa-audit',    label: 'label-cppa-audit',    ver: 'ver-cppa-audit',    dep: 'dep-cppa-audit',    date: 'date-cppa-audit',    state: 'state-cppa-audit',    monStatus: 'mon-status-cppa-audit',    monCheck: 'mon-check-cppa-audit',    type: 'audit',   defaultOrder: 4 },
+        pepoaAudit:   { unit: 'PEPOA', card: 'card-pepoa-audit',   link: 'link-pepoa-audit',   name: 'name-pepoa-audit',   badge: 'badge-pepoa-audit',   label: 'label-pepoa-audit',   ver: 'ver-pepoa-audit',   dep: 'dep-pepoa-audit',   date: 'date-pepoa-audit',   state: 'state-pepoa-audit',   monStatus: 'mon-status-pepoa-audit',   monCheck: 'mon-check-pepoa-audit',   type: 'audit',   defaultOrder: 5 },
+        madreAudit:   { unit: 'MADRE', card: 'card-madre-audit',   link: 'link-madre-audit',   name: 'name-madre-audit',   badge: 'badge-madre-audit',   label: 'label-madre-audit',   ver: 'ver-madre-audit',   dep: 'dep-madre-audit',   date: 'date-madre-audit',   state: 'state-madre-audit',   monStatus: 'mon-status-madre-audit',   monCheck: 'mon-check-madre-audit',   type: 'audit',   defaultOrder: 6 }
       };
 
       var UNIT_ORDER_BASE = { CPPA: 1, PEPOA: 2, MADRE: 3 };
@@ -1267,8 +1626,98 @@
         releaseState: { environments: {} },
         releaseHistory: [],
         announcements: [],
-        settings: {}
+        settings: {},
+        monitoring: null
       };
+
+      var STATUS_META = {
+        ACESSIVEL: {
+          label: 'Acessível (HTTP)',
+          cls: 'st-acessivel',
+          tlCls: 'st-acessivel',
+          color: 'var(--oficial-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+        },
+        RESPOSTA_LENTA: {
+          label: 'Resposta lenta',
+          cls: 'st-lenta',
+          tlCls: 'st-lenta',
+          color: 'var(--audit-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+        },
+        FALHA_VERIFICACAO: {
+          label: 'Falha na verificação',
+          cls: 'st-falha',
+          tlCls: 'st-falha',
+          color: 'var(--audit-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+        },
+        INDISPONIVEL: {
+          label: 'Indisponível',
+          cls: 'st-indisponivel',
+          tlCls: 'st-indisponivel',
+          color: 'var(--danger-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+        },
+        AUTENTICACAO_NECESSARIA: {
+          label: 'Autenticação necessária',
+          cls: 'st-auth',
+          tlCls: 'st-auth',
+          color: 'var(--accent-secondary)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+        },
+        MANUTENCAO: {
+          label: 'Manutenção',
+          cls: 'st-manutencao',
+          tlCls: 'st-manutencao',
+          color: 'var(--audit-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
+        },
+        DESATIVADO: {
+          label: 'Desativado',
+          cls: 'st-desativado',
+          tlCls: 'st-lacuna',
+          color: 'var(--neutral-text)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>'
+        },
+        DESCONHECIDO: {
+          label: 'Desconhecido',
+          cls: 'st-desconhecido',
+          tlCls: 'st-lacuna',
+          color: 'var(--neutral-text)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+        },
+        DADOS_DESATUALIZADOS: {
+          label: 'Dados desatualizados',
+          cls: 'st-desatualizado',
+          tlCls: 'st-lacuna',
+          color: 'var(--audit-color)',
+          icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>'
+        }
+      };
+
+      function getStatusMeta(code) {
+        return STATUS_META[code] || STATUS_META.DESCONHECIDO;
+      }
+
+      function renderStatusPillHtml(code, extraText) {
+        var meta = getStatusMeta(code);
+        var text = meta.label + (extraText ? ' · ' + extraText : '');
+        return '<span class="mon-pill ' + meta.cls + '">' + meta.icon + '<span>' + escapeHtml(text) + '</span></span>';
+      }
+
+      function formatDurationMs(ms) {
+        if (ms === null || ms === undefined || isNaN(Number(ms))) return '—';
+        var val = Math.max(0, Math.round(Number(ms)));
+        if (val < 1000) return val + ' ms';
+        var sec = Math.round(val / 1000);
+        if (sec < 60) return sec + ' s';
+        var min = Math.floor(sec / 60);
+        var remSec = sec % 60;
+        if (min < 60) return min + 'm ' + remSec + 's';
+        var hrs = Math.floor(min / 60);
+        return hrs + 'h ' + (min % 60) + 'm';
+      }
 
       function escapeHtml(str) {
         if (str === null || str === undefined) return '';
@@ -1600,6 +2049,505 @@
         }
       }
 
+      function getFilteredEnvKeys(uFilter, eFilter) {
+        var keys = [];
+        for (var key in MAP) {
+          if (!Object.prototype.hasOwnProperty.call(MAP, key)) continue;
+          var m = MAP[key];
+          var envLabel = m.type === 'oficial' ? 'OFICIAL' : 'AUDIT';
+          if (uFilter !== 'TODAS' && m.unit !== uFilter) continue;
+          if (eFilter !== 'TODOS' && envLabel !== eFilter) continue;
+          keys.push(key);
+        }
+        return keys;
+      }
+
+      function computeAvailabilityStats(envKey, period, mon) {
+        var samples = Array.isArray(mon.samples) ? mon.samples : [];
+        var daily = mon.daily || {};
+        var settings = mon.settings || {};
+        var intervalMin = Number(settings.intervalMinutes || 15);
+        var minSamples = Number(mon.minSamplesForAvailability || 4);
+        var nowMs = Date.now();
+
+        if (period === '7d' || period === '14d') {
+          var daysCount = period === '7d' ? 7 : 14;
+          var okSum = 0;
+          var slowSum = 0;
+          var failSum = 0;
+          var authSum = 0;
+          var maintSum = 0;
+          var activeDays = 0;
+          for (var d = 0; d < daysCount; d++) {
+            var dt = new Date(nowMs - (d * 86400000));
+            var dayKey;
+            try {
+              dayKey = dt.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            } catch (e) {
+              dayKey = dt.toISOString().slice(0, 10);
+            }
+            var bucket = daily[dayKey] && daily[dayKey][envKey];
+            if (bucket && bucket.count > 0) {
+              activeDays++;
+              okSum += Number(bucket.ok || 0);
+              slowSum += Number(bucket.slow || 0);
+              failSum += Number(bucket.fail || 0);
+              authSum += Number(bucket.auth || 0);
+              maintSum += Number(bucket.maint || 0);
+            }
+          }
+          var totalSamples = okSum + slowSum + failSum + authSum + maintSum;
+          var verifiable = okSum + slowSum + failSum;
+          var expectedApprox = daysCount * Math.floor(1440 / intervalMin);
+          var coveragePct = expectedApprox > 0 ? Math.min(100, Math.round((totalSamples / expectedApprox) * 100)) : 0;
+          var sufficient = verifiable >= minSamples;
+          var availPct = sufficient ? Number((((okSum + slowSum) / verifiable) * 100).toFixed(1)) : null;
+          return {
+            windowLabel: daysCount + ' dias (diário)',
+            totalSamples: totalSamples,
+            verifiableSamples: verifiable,
+            okSamples: okSum + slowSum,
+            slowSamples: slowSum,
+            failSamples: failSum,
+            authSamples: authSum,
+            maintSamples: maintSum,
+            expectedSlots: expectedApprox,
+            coveragePct: coveragePct,
+            daysWithData: activeDays,
+            sufficient: sufficient,
+            minSamples: minSamples,
+            availabilityPct: availPct
+          };
+        }
+
+        var hours = period === '6h' ? 6 : 24;
+        var windowMs = hours * 3600000;
+        var sinceMs = nowMs - windowMs;
+        var expectedSlots = Math.max(1, Math.floor((hours * 60) / intervalMin));
+        var ok = 0, slow = 0, fail = 0, auth = 0, maint = 0, total = 0;
+
+        for (var i = 0; i < samples.length; i++) {
+          var s = samples[i];
+          if (s.e !== envKey) continue;
+          var ts = Date.parse(s.t || 0);
+          if (isNaN(ts) || ts < sinceMs) continue;
+          total++;
+          if (s.m === 1 || s.s === 'MANUTENCAO') maint++;
+          else if (s.s === 'ACESSIVEL') ok++;
+          else if (s.s === 'RESPOSTA_LENTA') slow++;
+          else if (s.s === 'AUTENTICACAO_NECESSARIA') auth++;
+          else fail++;
+        }
+        var verif = ok + slow + fail;
+        var cov = Math.min(100, Math.round((total / expectedSlots) * 100));
+        var suf = verif >= minSamples;
+        var pct = suf ? Number((((ok + slow) / verif) * 100).toFixed(1)) : null;
+        return {
+          windowLabel: 'Últimas ' + hours + 'h',
+          totalSamples: total,
+          verifiableSamples: verif,
+          okSamples: ok + slow,
+          slowSamples: slow,
+          failSamples: fail,
+          authSamples: auth,
+          maintSamples: maint,
+          expectedSlots: expectedSlots,
+          coveragePct: cov,
+          sufficient: suf,
+          minSamples: minSamples,
+          availabilityPct: pct
+        };
+      }
+
+      function renderStatusTimeline(filteredKeys, period, mon) {
+        var container = document.getElementById('statusTimelineContainer');
+        if (!container) return;
+        var settings = mon.settings || {};
+        var intervalMin = Number(settings.intervalMinutes || 15);
+        var nowMs = Date.now();
+        var samples = Array.isArray(mon.samples) ? mon.samples : [];
+        var daily = mon.daily || {};
+
+        var rowsHtml = '';
+        if (period === '7d' || period === '14d') {
+          var days = period === '7d' ? 7 : 14;
+          for (var i = 0; i < filteredKeys.length; i++) {
+            var k = filteredKeys[i];
+            var m = MAP[k];
+            var slots = '';
+            var gaps = 0;
+            for (var d = days - 1; d >= 0; d--) {
+              var dt = new Date(nowMs - (d * 86400000));
+              var dayStr;
+              try { dayStr = dt.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+              catch (e) { dayStr = dt.toISOString().slice(0, 10); }
+              var b = daily[dayStr] && daily[dayStr][k];
+              var cls = 'st-lacuna';
+              var title = dayStr + ': Lacuna (sem amostra)';
+              if (!b || !b.count) {
+                gaps++;
+              } else if (b.fail > 0) {
+                cls = 'st-indisponivel';
+                title = dayStr + ': ' + b.fail + ' falha(s), ' + (b.ok + b.slow) + ' OK, ' + b.auth + ' auth';
+              } else if (b.auth > 0 && (b.ok + b.slow) === 0) {
+                cls = 'st-auth';
+                title = dayStr + ': ' + b.auth + ' verificação(ões) com autenticação necessária';
+              } else if (b.slow > 0) {
+                cls = 'st-lenta';
+                title = dayStr + ': ' + b.ok + ' acessível, ' + b.slow + ' lenta';
+              } else if (b.maint > 0 && (b.ok + b.slow) === 0) {
+                cls = 'st-manutencao';
+                title = dayStr + ': Em manutenção (' + b.maint + ' amostras)';
+              } else {
+                cls = 'st-acessivel';
+                title = dayStr + ': ' + b.ok + ' acessível(is)';
+              }
+              slots += '<div class="tl-slot ' + cls + '" title="' + escapeHtml(title) + '"></div>';
+            }
+            rowsHtml += '<div class="timeline-row">' +
+              '<div class="timeline-row-head"><strong>' + escapeHtml(m.unit + ' · ' + (m.type === 'oficial' ? 'OFICIAL' : 'AUDIT')) + '</strong><span class="muted">' + (days - gaps) + '/' + days + ' dias com coleta (' + gaps + ' lacunas)</span></div>' +
+              '<div class="timeline-strip">' + slots + '</div>' +
+            '</div>';
+          }
+        } else {
+          var hours = period === '6h' ? 6 : 24;
+          var slotCount = hours === 6 ? Math.max(12, Math.floor((6 * 60) / intervalMin)) : Math.min(48, Math.max(12, Math.floor((24 * 60) / intervalMin)));
+          var bucketMs = Math.floor((hours * 3600000) / slotCount);
+          var startMs = nowMs - (slotCount * bucketMs);
+
+          for (var j = 0; j < filteredKeys.length; j++) {
+            var ek = filteredKeys[j];
+            var meta = MAP[ek];
+            var slotsHtml = '';
+            var gapCount = 0;
+            for (var sIdx = 0; sIdx < slotCount; sIdx++) {
+              var bStart = startMs + (sIdx * bucketMs);
+              var bEnd = bStart + bucketMs;
+              var matched = [];
+              for (var p = 0; p < samples.length; p++) {
+                var smp = samples[p];
+                if (smp.e !== ek) continue;
+                var ts = Date.parse(smp.t || 0);
+                if (!isNaN(ts) && ts >= bStart && ts < bEnd) matched.push(smp);
+              }
+              var slotLabelTime = formatPtBrDateTime(new Date(bStart).toISOString());
+              if (matched.length === 0) {
+                gapCount++;
+                slotsHtml += '<div class="tl-slot st-lacuna" title="' + escapeHtml(slotLabelTime + ' — Lacuna (sem coleta)') + '"></div>';
+              } else {
+                var picked = matched[0];
+                for (var q = 0; q < matched.length; q++) {
+                  if (matched[q].s === 'INDISPONIVEL' || matched[q].s === 'FALHA_VERIFICACAO') { picked = matched[q]; break; }
+                }
+                var smMeta = getStatusMeta(picked.m === 1 ? 'MANUTENCAO' : picked.s);
+                slotsHtml += '<div class="tl-slot ' + smMeta.tlCls + '" title="' + escapeHtml(slotLabelTime + ' — ' + smMeta.label + ' (' + (picked.d || 0) + ' ms, HTTP ' + (picked.c || 0) + ')') + '"></div>';
+              }
+            }
+            rowsHtml += '<div class="timeline-row">' +
+              '<div class="timeline-row-head"><strong>' + escapeHtml(meta.unit + ' · ' + (meta.type === 'oficial' ? 'OFICIAL' : 'AUDIT')) + '</strong><span class="muted">' + (slotCount - gapCount) + '/' + slotCount + ' intervalos preenchidos (' + gapCount + ' lacunas)</span></div>' +
+              '<div class="timeline-strip">' + slotsHtml + '</div>' +
+            '</div>';
+          }
+        }
+
+        var legendHtml = '<div class="timeline-legend">' +
+          '<span class="legend-item"><span class="legend-swatch" style="background:var(--oficial-color);"></span>Acessível (HTTP)</span>' +
+          '<span class="legend-item"><span class="legend-swatch" style="background:var(--audit-color);"></span>Lento / Atenção</span>' +
+          '<span class="legend-item"><span class="legend-swatch" style="background:var(--danger-color);"></span>Indisponível</span>' +
+          '<span class="legend-item"><span class="legend-swatch" style="background:var(--accent-secondary);"></span>Autenticação necessária</span>' +
+          '<span class="legend-item"><span class="legend-swatch" style="background:repeating-linear-gradient(-45deg,var(--neutral-soft),var(--neutral-soft) 3px,var(--border-color) 3px,var(--border-color) 5px);border:1px solid var(--border-color);"></span>Lacuna (sem coleta)</span>' +
+        '</div>';
+
+        container.innerHTML = rowsHtml + legendHtml;
+      }
+
+      function renderStatusSvgChart(filteredKeys, period, mon) {
+        var container = document.getElementById('statusSvgChartContainer');
+        if (!container) return;
+        var samples = Array.isArray(mon.samples) ? mon.samples : [];
+        var settings = mon.settings || {};
+        var slowMs = Number(settings.slowThresholdMs || 3000);
+        var intervalMs = Number(settings.intervalMinutes || 15) * 60000;
+        var hours = period === '6h' ? 6 : (period === '24h' ? 24 : (period === '7d' ? 168 : 336));
+        var nowMs = Date.now();
+        var startMs = nowMs - (hours * 3600000);
+
+        var pts = samples.filter(function (s) {
+          if (filteredKeys.indexOf(s.e) === -1) return false;
+          var ts = Date.parse(s.t || 0);
+          return !isNaN(ts) && ts >= startMs;
+        }).sort(function (a, b) {
+          return Date.parse(a.t) - Date.parse(b.t);
+        });
+
+        if (pts.length === 0) {
+          container.innerHTML = '<div class="empty-state"><strong>Sem amostras detalhadas no período selecionado</strong><p>O gráfico exibirá latência observada (ms), limiar de lentidão e lacunas assim que as sondas periódicas coletarem amostras.</p></div>';
+          return;
+        }
+
+        var W = 820, H = 220, padL = 52, padR = 18, padT = 18, padB = 34;
+        var plotW = W - padL - padR;
+        var plotH = H - padT - padB;
+        var maxMs = slowMs * 1.25;
+        for (var i = 0; i < pts.length; i++) {
+          if (Number(pts[i].d || 0) > maxMs) maxMs = Number(pts[i].d || 0);
+        }
+        maxMs = Math.max(1000, Math.ceil(maxMs / 500) * 500);
+
+        function xOf(ts) {
+          return padL + (((ts - startMs) / Math.max(1, nowMs - startMs)) * plotW);
+        }
+        function yOf(msVal) {
+          return padT + plotH - ((Math.min(maxMs, Math.max(0, msVal)) / maxMs) * plotH);
+        }
+
+        // Identify explicit time gaps between consecutive timestamps across filtered points
+        var gapRects = '';
+        var uniqTs = [];
+        for (var u = 0; u < pts.length; u++) {
+          var tVal = Date.parse(pts[u].t);
+          if (uniqTs.length === 0 || (tVal - uniqTs[uniqTs.length - 1]) > 60000) uniqTs.push(tVal);
+        }
+        if (uniqTs.length > 0 && (uniqTs[0] - startMs) > intervalMs * 1.8) {
+          var gx0 = xOf(startMs), gx1 = xOf(uniqTs[0]);
+          gapRects += '<rect x="' + gx0.toFixed(1) + '" y="' + padT + '" width="' + Math.max(2, gx1 - gx0).toFixed(1) + '" height="' + plotH + '" fill="currentColor" opacity="0.06"><title>Lacuna inicial sem coleta</title></rect>';
+        }
+        for (var g = 1; g < uniqTs.length; g++) {
+          if ((uniqTs[g] - uniqTs[g - 1]) > intervalMs * 1.8) {
+            var rx0 = xOf(uniqTs[g - 1]), rx1 = xOf(uniqTs[g]);
+            gapRects += '<rect x="' + rx0.toFixed(1) + '" y="' + padT + '" width="' + Math.max(2, rx1 - rx0).toFixed(1) + '" height="' + plotH + '" fill="currentColor" opacity="0.06"><title>Lacuna entre coletas</title></rect>';
+          }
+        }
+
+        var ySlow = yOf(slowMs);
+        var gridLines = '';
+        for (var step = 0; step <= 4; step++) {
+          var val = Math.round((maxMs / 4) * step);
+          var yPos = yOf(val);
+          gridLines += '<line x1="' + padL + '" y1="' + yPos.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yPos.toFixed(1) + '" stroke="var(--border-color)" stroke-width="1"/>';
+          gridLines += '<text x="' + (padL - 8) + '" y="' + (yPos + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="var(--text-secondary)">' + val + '</text>';
+        }
+
+        var dots = '';
+        for (var p = 0; p < pts.length; p++) {
+          var pt = pts[p];
+          var cx = xOf(Date.parse(pt.t));
+          var cy = yOf(Number(pt.d || 0));
+          var meta = getStatusMeta(pt.m === 1 ? 'MANUTENCAO' : pt.s);
+          var tip = pt.e + ' · ' + meta.label + ' · ' + (pt.d || 0) + ' ms · HTTP ' + (pt.c || 0) + ' · ' + formatPtBrDateTime(pt.t);
+          if (pt.s === 'INDISPONIVEL' || pt.s === 'FALHA_VERIFICACAO') {
+            dots += '<rect x="' + (cx - 4).toFixed(1) + '" y="' + (cy - 4).toFixed(1) + '" width="8" height="8" fill="' + meta.color + '"><title>' + escapeHtml(tip) + '</title></rect>';
+          } else if (pt.s === 'AUTENTICACAO_NECESSARIA') {
+            dots += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="4" fill="var(--bg-surface)" stroke="' + meta.color + '" stroke-width="2"><title>' + escapeHtml(tip) + '</title></circle>';
+          } else {
+            dots += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="3.8" fill="' + meta.color + '"><title>' + escapeHtml(tip) + '</title></circle>';
+          }
+        }
+
+        var svg = '<div class="svg-chart-wrap">' +
+          '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gráfico de latência observada e eventos de monitoramento">' +
+            '<title>Latência observada (ms) no período selecionado</title>' +
+            gapRects +
+            gridLines +
+            '<line x1="' + padL + '" y1="' + ySlow.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ySlow.toFixed(1) + '" stroke="var(--audit-color)" stroke-width="1.5" stroke-dasharray="5,4"/>' +
+            '<text x="' + (W - padR) + '" y="' + Math.max(12, ySlow - 5).toFixed(1) + '" text-anchor="end" font-size="10" font-weight="600" fill="var(--audit-color)">Limiar lentidão (' + slowMs + ' ms)</text>' +
+            dots +
+            '<text x="' + padL + '" y="' + (H - 10) + '" font-size="10" fill="var(--text-secondary)">Início: ' + escapeHtml(formatPtBrDateTime(new Date(startMs).toISOString())) + '</text>' +
+            '<text x="' + (W - padR) + '" y="' + (H - 10) + '" text-anchor="end" font-size="10" fill="var(--text-secondary)">Agora: ' + escapeHtml(formatPtBrDateTime(new Date(nowMs).toISOString())) + '</text>' +
+          '</svg>' +
+        '</div>';
+        container.innerHTML = svg;
+      }
+
+      function applyMonitoringTelemetry() {
+        var mon = state.monitoring;
+        if (!mon || !mon.environments) return;
+
+        var summary = mon.summary || {};
+        var envs = mon.environments || {};
+        var relMap = (state.releaseState && state.releaseState.environments) || {};
+        var incidents = Array.isArray(mon.incidents) ? mon.incidents : [];
+        var maintenances = Array.isArray(mon.maintenances) ? mon.maintenances : [];
+        var activeIncs = incidents.filter(function (x) { return x.estado === 'INVESTIGACAO' || x.estado === 'CONFIRMADO'; });
+
+        // 1. Update Homepage per-environment slots
+        for (var key in MAP) {
+          if (!Object.prototype.hasOwnProperty.call(MAP, key)) continue;
+          var m = MAP[key];
+          var ev = envs[key];
+          var elSt = document.getElementById(m.monStatus);
+          var elChk = document.getElementById(m.monCheck);
+          if (ev && elSt) {
+            var sm = getStatusMeta(ev.effectiveStatus);
+            elSt.className = 'mon-pill ' + sm.cls;
+            elSt.innerHTML = sm.icon + '<span>' + escapeHtml(sm.label) + '</span>';
+          }
+          if (ev && elChk) {
+            if (ev.lastCheckedAt) {
+              var lat = (ev.durationMs !== null && ev.durationMs !== undefined) ? (' · ' + ev.durationMs + ' ms') : '';
+              elChk.textContent = formatPtBrDateTime(ev.lastCheckedAt) + lat;
+            } else {
+              elChk.textContent = ev.effectiveStatus === 'DESATIVADO' ? 'Desativado' : 'Sem amostra';
+            }
+          }
+        }
+
+        // 2. Discreet banner on Homepage for active incidents or active maintenance
+        setText('navCountStatus', String(activeIncs.length));
+        var incBanner = document.getElementById('activeIncidentsBanner');
+        var incBannerText = document.getElementById('activeIncidentsBannerText');
+        if (incBanner && incBannerText) {
+          var activeMaintCount = summary.maintenance || 0;
+          if (activeIncs.length > 0 || activeMaintCount > 0) {
+            var parts = [];
+            if (activeIncs.length > 0) parts.push(activeIncs.length + ' incidente(s) ativo(s) em monitoramento');
+            if (activeMaintCount > 0) parts.push(activeMaintCount + ' ambiente(s) em manutenção programada');
+            incBannerText.textContent = parts.join(' · ') + '.';
+            incBanner.classList.toggle('severe', activeIncs.length > 0);
+            incBanner.classList.add('visible');
+          } else {
+            incBanner.classList.remove('visible');
+          }
+        }
+
+        // 3. Status View Summary KPIs
+        setText('statusKpiMonitored', (summary.monitored || 0) + ' / ' + (summary.total || 6));
+        setText('statusKpiMonitoredSub', (mon.settings && mon.settings.enabled === false) ? 'Motor pausado' : ('Ciclo a cada ' + ((mon.settings && mon.settings.intervalMinutes) || 15) + ' min'));
+        setText('statusKpiAccessible', String(summary.accessible || 0));
+        setText('statusKpiAttention', String(summary.attention || 0));
+        setText('statusKpiAttentionSub', (summary.slow || 0) + ' lento · ' + (summary.unavailable || 0) + ' indisp. · ' + (summary.maintenance || 0) + ' manut. · ' + (summary.stale || 0) + ' exp.');
+        setText('statusKpiIncidents', String(activeIncs.length));
+        setText('statusKpiNonVerifiable', String(summary.nonVerifiable || 0));
+        setText('statusKpiNonVerifiableSub', (summary.authRequired || 0) + ' login Google · ' + (summary.disabled || 0) + ' desativ. · ' + (summary.unknown || 0) + ' sem amostra');
+        if (summary.lastRunAt) {
+          setText('statusKpiLastRun', formatPtBrDateTime(summary.lastRunAt));
+          setText('statusKpiLastRunSub', 'Duração ciclo: ' + formatDurationMs(summary.lastRunDurationMs));
+        } else {
+          setText('statusKpiLastRun', 'Sem execução');
+          setText('statusKpiLastRunSub', 'Aguardando primeira sonda');
+        }
+
+        // 4. Per-Environment Status Table
+        var tableWrap = document.getElementById('statusEnvTableContainer');
+        if (tableWrap) {
+          var rows = Object.keys(MAP).map(function (k) {
+            var m = MAP[k];
+            var ev = envs[k] || {};
+            var cfg = (state.ambientes && state.ambientes[k]) || {};
+            var rel = relMap[k];
+            var verText = rel ? ('v' + rel.versao + ' (@' + String(rel.deploymentVersion || '').replace(/^@/, '') + ')') : 'Sem evento';
+            var durText = (ev.durationMs !== null && ev.durationMs !== undefined) ? (ev.durationMs + ' ms') : '—';
+            var chkText = ev.lastCheckedAt ? formatPtBrDateTime(ev.lastCheckedAt) : 'Sem amostra';
+            var avail24 = computeAvailabilityStats(k, '24h', mon);
+            var availBadge = avail24.sufficient
+              ? (avail24.availabilityPct + '% HTTP (' + avail24.verifiableSamples + ' verif.)')
+              : ('Amostra insuficiente (' + avail24.verifiableSamples + '/' + avail24.minSamples + ')');
+            var linkBtn = (cfg.ativo !== false && cfg.url)
+              ? '<a href="' + escapeHtml(cfg.url) + '" target="_blank" rel="noopener noreferrer" class="btn-ghost" style="padding:0.28rem 0.55rem;font-size:11.5px;text-decoration:none;">Abrir ↗</a>'
+              : '<span class="muted">Desativado</span>';
+            var extraReason = ev.category ? ('<div class="muted" style="margin-top:0.2rem;font-size:11px;">' + escapeHtml(ev.statusReason || ev.category) + '</div>') : '';
+
+            return '<tr>' +
+              '<td><strong>' + escapeHtml(m.unit) + '</strong></td>' +
+              '<td><span class="tag-pill ' + (m.type === 'oficial' ? 'tag-oficial' : 'tag-audit') + '">' + (m.type === 'oficial' ? 'OFICIAL' : 'AUDIT') + '</span></td>' +
+              '<td>' + escapeHtml(verText) + '</td>' +
+              '<td>' + renderStatusPillHtml(ev.effectiveStatus) + extraReason + '</td>' +
+              '<td>' + escapeHtml(durText) + '</td>' +
+              '<td>' + escapeHtml(chkText) + '</td>' +
+              '<td style="font-size:12px;">' + escapeHtml(availBadge) + '</td>' +
+              '<td>' + linkBtn + '</td>' +
+            '</tr>';
+          }).join('');
+
+          tableWrap.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+            '<th>Unidade</th><th>Ambiente</th><th>Versão</th><th>Estado</th><th>Duração</th><th>Última verificação</th><th>Histórico (24h)</th><th>Link</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+        }
+
+        // 5. Filtered Availability + Timeline + SVG Chart
+        renderFilteredStatusAnalytics();
+
+        // 6. Incidents List
+        var incWrap = document.getElementById('statusIncidentsContainer');
+        if (incWrap) {
+          if (incidents.length === 0) {
+            incWrap.innerHTML = '<div class="empty-state"><strong>Nenhum incidente registrado</strong><p>Falhas consecutivas atingindo o limiar configurável aparecerão agrupadas aqui.</p></div>';
+          } else {
+            var incRows = incidents.map(function (inc) {
+              var stClass = (inc.estado === 'RESOLVIDO' || inc.estado === 'ENCERRADO_ADMIN') ? 'tag-homologado' : (inc.estado === 'CONFIRMADO' ? 'tag-rollback' : 'tag-stale');
+              return '<tr>' +
+                '<td><code>' + escapeHtml(inc.id) + '</code></td>' +
+                '<td><strong>' + escapeHtml(inc.unidade) + '</strong> ' + escapeHtml(inc.ambiente) + '</td>' +
+                '<td><code>' + escapeHtml(inc.categoria) + '</code></td>' +
+                '<td>' + escapeHtml(formatPtBrDateTime(inc.inicio)) + '</td>' +
+                '<td>' + escapeHtml(formatPtBrDateTime(inc.ultimaOcorrencia)) + '</td>' +
+                '<td>' + (inc.encerramento ? escapeHtml(formatPtBrDateTime(inc.encerramento)) : '<span class="muted">Em aberto</span>') + '</td>' +
+                '<td>' + escapeHtml(formatDurationMs(inc.duracaoObservadaMs)) + '</td>' +
+                '<td><span class="tag-pill ' + stClass + '">' + escapeHtml(inc.estado) + '</span></td>' +
+                '<td>' + escapeHtml(inc.descricao || '—') + (inc.observacao ? '<div class="muted" style="margin-top:0.2rem;">Obs.: ' + escapeHtml(inc.observacao) + '</div>' : '') + '</td>' +
+              '</tr>';
+            }).join('');
+            incWrap.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+              '<th>ID</th><th>Alvo</th><th>Categoria</th><th>Início</th><th>Última</th><th>Encerramento</th><th>Duração</th><th>Estado</th><th>Descrição</th>' +
+              '</tr></thead><tbody>' + incRows + '</tbody></table></div>';
+          }
+        }
+
+        // 7. Maintenances List
+        var maintWrap = document.getElementById('statusMaintenancesContainer');
+        if (maintWrap) {
+          if (maintenances.length === 0) {
+            maintWrap.innerHTML = '<div class="empty-state"><strong>Nenhuma janela de manutenção ativa ou programada</strong><p>Janelas cadastradas na Central Administrativa serão exibidas aqui.</p></div>';
+          } else {
+            var mRows = maintenances.map(function (mt) {
+              return '<tr>' +
+                '<td><strong>' + escapeHtml(mt.titulo) + '</strong>' + (mt.descricao ? '<div class="muted">' + escapeHtml(mt.descricao) + '</div>' : '') + '</td>' +
+                '<td>' + escapeHtml(mt.alvo === 'TODAS' ? 'Todas as unidades' : mt.alvo) + '</td>' +
+                '<td>' + escapeHtml(formatPtBrDateTime(mt.inicio)) + '</td>' +
+                '<td>' + escapeHtml(formatPtBrDateTime(mt.fim)) + '</td>' +
+                '<td><span class="tag-pill tag-audit">' + escapeHtml(mt.estado) + '</span></td>' +
+                '<td>' + escapeHtml(mt.aviso || '—') + '</td>' +
+              '</tr>';
+            }).join('');
+            maintWrap.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+              '<th>Manutenção</th><th>Alvo</th><th>Início</th><th>Término</th><th>Estado</th><th>Aviso</th>' +
+              '</tr></thead><tbody>' + mRows + '</tbody></table></div>';
+          }
+        }
+      }
+
+      function renderFilteredStatusAnalytics() {
+        var mon = state.monitoring;
+        if (!mon) return;
+        var uFilter = (document.getElementById('filterStatusUnit') || {}).value || 'TODAS';
+        var eFilter = (document.getElementById('filterStatusEnv') || {}).value || 'TODOS';
+        var period = (document.getElementById('filterStatusPeriod') || {}).value || '24h';
+        var keys = getFilteredEnvKeys(uFilter, eFilter);
+
+        setText('statusFilterSummary', keys.length + ' ambiente(s) · Janela: ' + period);
+
+        var availWrap = document.getElementById('statusAvailabilityContainer');
+        if (availWrap) {
+          var cards = keys.map(function (k) {
+            var m = MAP[k];
+            var st = computeAvailabilityStats(k, period, mon);
+            var pctHtml = st.sufficient
+              ? '<span class="avail-pct">' + st.availabilityPct + '% HTTP acessível</span>'
+              : '<span class="avail-pct insufficient">Amostra insuficiente (' + st.verifiableSamples + '/' + st.minSamples + ' verificáveis)</span>';
+            return '<div class="avail-card">' +
+              '<div class="avail-head"><strong>' + escapeHtml(m.unit + ' · ' + (m.type === 'oficial' ? 'OFICIAL' : 'AUDIT')) + '</strong><span class="muted">' + escapeHtml(st.windowLabel) + '</span></div>' +
+              pctHtml +
+              '<div class="avail-meta">Amostras: ' + st.totalSamples + ' total · ' + st.verifiableSamples + ' verificáveis (' + st.okSamples + ' OK, ' + st.failSamples + ' falhas) · ' + st.authSamples + ' login Google</div>' +
+              '<div class="avail-meta">Cobertura observada: ' + st.coveragePct + '% (' + st.totalSamples + '/' + st.expectedSlots + ' slots) · Critério: sem lacunas/login/manutenção como sucesso, sem SLA.</div>' +
+            '</div>';
+          }).join('');
+          availWrap.innerHTML = '<div class="avail-grid">' + cards + '</div>';
+        }
+
+        renderStatusTimeline(keys, period, mon);
+        renderStatusSvgChart(keys, period, mon);
+      }
+
       function applyBootstrap(payload) {
         if (!payload) return;
         applyConfig(payload);
@@ -1607,8 +2555,10 @@
         if (Array.isArray(payload.releaseHistory)) state.releaseHistory = payload.releaseHistory;
         if (Array.isArray(payload.announcements)) state.announcements = payload.announcements;
         if (payload.settings) applySettings(payload.settings);
+        if (payload.monitoring) state.monitoring = payload.monitoring;
         applyReleaseTelemetry();
         renderAnnouncements();
+        applyMonitoringTelemetry();
       }
 
       function switchView(viewName) {
@@ -1691,6 +2641,29 @@
             document.getElementById('filterAnnUnit').value = 'TODAS';
             document.getElementById('filterAnnCat').value = 'TODAS';
             renderAnnouncements();
+          });
+        }
+
+        var statusFilterIds = ['filterStatusUnit', 'filterStatusEnv', 'filterStatusPeriod'];
+        for (var sf = 0; sf < statusFilterIds.length; sf++) {
+          var elS = document.getElementById(statusFilterIds[sf]);
+          if (elS && elS.addEventListener) {
+            elS.addEventListener('change', renderFilteredStatusAnalytics);
+          }
+        }
+        var clearStatus = document.getElementById('btnClearStatusFilters');
+        if (clearStatus && clearStatus.addEventListener) {
+          clearStatus.addEventListener('click', function () {
+            document.getElementById('filterStatusUnit').value = 'TODAS';
+            document.getElementById('filterStatusEnv').value = 'TODOS';
+            document.getElementById('filterStatusPeriod').value = '24h';
+            renderFilteredStatusAnalytics();
+          });
+        }
+        var goStatusBtn = document.getElementById('btnGoToStatusFromBanner');
+        if (goStatusBtn && goStatusBtn.addEventListener) {
+          goStatusBtn.addEventListener('click', function () {
+            switchView('status');
           });
         }
       }

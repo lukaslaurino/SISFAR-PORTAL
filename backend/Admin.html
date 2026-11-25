@@ -454,6 +454,7 @@
 
       <div class="admin-tabs" role="tablist">
         <button type="button" class="tab-btn active" data-tab="ambientes">Ambientes</button>
+        <button type="button" class="tab-btn" data-tab="monitoramento">Monitoramento</button>
         <button type="button" class="tab-btn" data-tab="releases">Releases</button>
         <button type="button" class="tab-btn" data-tab="comunicados">Comunicados</button>
         <button type="button" class="tab-btn" data-tab="configuracoes">Configurações</button>
@@ -708,6 +709,170 @@
           </div>
         </div>
       </section>
+
+      <!-- TAB 5: MONITORAMENTO -->
+      <section id="tab-monitoramento" class="tab-panel">
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Diagnóstico do Motor Periódico, Cotas e Verificação Manual</h2>
+              <p class="muted">Trigger instalável idempotente via ScriptApp · UrlFetchApp sem redirects.</p>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button type="button" id="btnMonSyncTrigger" class="btn btn-secondary">Sincronizar Trigger</button>
+              <button type="button" id="btnMonRunNow" class="btn btn-primary">Executar Verificação Manual</button>
+            </div>
+          </div>
+          <div id="monDiagnosticsBox" class="rel-state-grid"></div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Configurações do Monitoramento (MONITOR_SETTINGS)</h2>
+              <p class="muted">Intervalos suportados pelo Apps Script, limiares de lentidão, falhas e retenção.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="monEnabled">Motor Periódico</label>
+              <select id="monEnabled">
+                <option value="true">Ativo</option>
+                <option value="false">Pausado</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="monInterval">Frequência (GAS)</label>
+              <select id="monInterval">
+                <option value="5">A cada 5 min</option>
+                <option value="10">A cada 10 min</option>
+                <option value="15">A cada 15 min (padrão)</option>
+                <option value="30">A cada 30 min</option>
+                <option value="60">A cada 1 hora</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="monSlowMs">Limiar Lentidão (ms)</label>
+              <input type="number" id="monSlowMs" min="500" max="30000" step="100">
+            </div>
+            <div class="form-group">
+              <label for="monFailThresh">Falhas p/ Incidente</label>
+              <input type="number" id="monFailThresh" min="1" max="10">
+            </div>
+            <div class="form-group">
+              <label for="monRecoveryThresh">Sucessos p/ Recuperação</label>
+              <input type="number" id="monRecoveryThresh" min="1" max="5">
+            </div>
+            <div class="form-group">
+              <label for="monStaleMin">Validade Amostra (min)</label>
+              <input type="number" id="monStaleMin" min="10" max="1440">
+            </div>
+            <div class="form-group">
+              <label for="monHistDays">Retenção Detalhada (dias)</label>
+              <input type="number" id="monHistDays" min="1" max="14">
+            </div>
+            <div class="form-group">
+              <label for="monDailyDays">Agregado Diário (dias)</label>
+              <input type="number" id="monDailyDays" min="7" max="30">
+            </div>
+            <div class="form-group">
+              <label for="monIncDays">Retenção Incidentes (dias)</label>
+              <input type="number" id="monIncDays" min="7" max="365">
+            </div>
+            <div class="form-group">
+              <label for="monFetchMode">Modo UrlFetchApp</label>
+              <select id="monFetchMode">
+                <option value="false">fetch isolado (latência real)</option>
+                <option value="true">fetchAll paralelo (com fallback)</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 style="font-size:13px;font-weight:700;margin:1rem 0 0.6rem;">Habilitação Individual e Último Estado/Erro</h3>
+          <div id="monEnvTogglesWrap"></div>
+
+          <div class="toolbar">
+            <span class="muted">Salvar sincroniza automaticamente o gatilho instalável conforme frequência escolhida.</span>
+            <button type="button" id="btnSaveMonSettings" class="btn btn-primary">Salvar Monitoramento</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Incidentes Operacionais (MONITOR_INCIDENTS)</h2>
+              <p class="muted">Atualize estado (investigação/confirmado/resolvido/encerrado administrativamente) e observações.</p>
+            </div>
+          </div>
+          <div id="monIncidentsWrap"></div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2 id="maintFormTitle">Nova Janela de Manutenção</h2>
+              <p class="muted">Horários interpretados em America/Sao_Paulo. Encerrar retorna imediatamente às evidências reais.</p>
+            </div>
+            <button type="button" id="btnResetMaintForm" class="btn btn-secondary">Limpar Formulário</button>
+          </div>
+          <input type="hidden" id="maintId" value="">
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label for="maintTitle">Título da Manutenção</label>
+              <input type="text" id="maintTitle" maxlength="120" placeholder="Ex.: Janela de atualização programada">
+            </div>
+            <div class="form-group">
+              <label for="maintAlvo">Unidade / Ambiente Alvo</label>
+              <select id="maintAlvo">
+                <option value="TODAS">TODAS (6 ambientes)</option>
+                <option value="CPPA">CPPA (OFICIAL + AUDIT)</option>
+                <option value="PEPOA">PEPOA (OFICIAL + AUDIT)</option>
+                <option value="MADRE">MADRE (OFICIAL + AUDIT)</option>
+                <option value="cppaOficial">cppaOficial</option>
+                <option value="pepoaOficial">pepoaOficial</option>
+                <option value="madreOficial">madreOficial</option>
+                <option value="cppaAudit">cppaAudit</option>
+                <option value="pepoaAudit">pepoaAudit</option>
+                <option value="madreAudit">madreAudit</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="maintEstado">Estado</label>
+              <select id="maintEstado">
+                <option value="EM_ANDAMENTO">EM_ANDAMENTO</option>
+                <option value="PROGRAMADA">PROGRAMADA</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="maintInicio">Início (America/Sao_Paulo)</label>
+              <input type="datetime-local" id="maintInicio">
+            </div>
+            <div class="form-group">
+              <label for="maintFim">Término (America/Sao_Paulo)</label>
+              <input type="datetime-local" id="maintFim">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="maintAviso">Aviso Público (opcional)</label>
+              <input type="text" id="maintAviso" maxlength="220" placeholder="Mensagem curta exibida no painel Status">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="maintDesc">Descrição Técnica</label>
+              <textarea id="maintDesc" maxlength="400" placeholder="Detalhes da janela de manutenção..."></textarea>
+            </div>
+          </div>
+          <div class="toolbar">
+            <span></span>
+            <button type="button" id="btnSaveMaint" class="btn btn-primary">Salvar Manutenção</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <h2>Manutenções Cadastradas</h2>
+          </div>
+          <div id="monMaintListWrap"></div>
+        </div>
+      </section>
     </div>
   </main>
 
@@ -752,18 +917,37 @@
         }
       }
 
-      function callServer(fnName, args, onSuccess, onError) {
+      function toSaoPauloDatetimeLocal(iso) {
+        if (!iso) return '';
+        var ts = Date.parse(iso);
+        if (isNaN(ts)) return '';
+        try {
+          var parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+          }).formatToParts(new Date(ts));
+          var map = {};
+          for (var i = 0; i < parts.length; i++) map[parts[i].type] = parts[i].value;
+          return map.year + '-' + map.month + '-' + map.day + 'T' + (map.hour === '24' ? '00' : map.hour) + ':' + map.minute;
+        } catch (e) {
+          return new Date(ts).toISOString().slice(0, 16);
+        }
+      }
+
+      function callServer(fnName, args, onSuccess, onError, timeoutMs) {
         if (typeof google === 'undefined' || !google.script || !google.script.run) {
           if (onError) onError(new Error('google.script.run indisponível.'));
           return;
         }
         var done = false;
+        var limit = timeoutMs || 15000;
         var timer = setTimeout(function () {
           if (!done) {
             done = true;
-            if (onError) onError(new Error('Tempo limite de 15s excedido ao comunicar com o servidor.'));
+            if (onError) onError(new Error('Tempo limite de ' + Math.round(limit / 1000) + 's excedido ao comunicar com o servidor.'));
           }
-        }, 15000);
+        }, limit);
 
         try {
           var runner = google.script.run
@@ -981,6 +1165,204 @@
         }
       }
 
+      function renderMonitoringAdmin(mon) {
+        if (!mon) return;
+        var settings = mon.settings || {};
+        var diag = mon.triggerDiagnostics || {};
+        var quota = mon.quotaEstimate || {};
+        var storage = mon.storageStats || {};
+        var summary = mon.summary || {};
+
+        var diagBox = document.getElementById('monDiagnosticsBox');
+        if (diagBox) {
+          var trigStatusPill = !diag.available
+            ? '<span class="pill pill-danger">API Trigger indisponível</span>'
+            : (diag.duplicateDetected
+              ? '<span class="pill pill-danger">Duplicata detectada (' + diag.installedCount + ')</span>'
+              : (diag.installedCount === 1
+                ? '<span class="pill pill-oficial">1 trigger ativo (OK)</span>'
+                : '<span class="pill pill-audit">Nenhum trigger instalado</span>'));
+
+          diagBox.innerHTML =
+            '<div class="rel-env-card">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;"><strong>Trigger Periódico</strong>' + trigStatusPill + '</div>' +
+              '<div class="muted">Handler: <code>' + escapeHtml(diag.handler || 'runScheduledMonitoringCheck') + '</code></div>' +
+              '<div class="muted">Frequência: <strong>' + escapeHtml(settings.intervalMinutes || 15) + ' min</strong> · Sync: ' + escapeHtml(formatDateTime(diag.lastSyncedAt)) + '</div>' +
+              (diag.errorMessage ? '<div class="muted" style="color:var(--danger-color);">' + escapeHtml(diag.errorMessage) + '</div>' : '') +
+            '</div>' +
+            '<div class="rel-env-card">' +
+              '<strong>Última e Próxima Execução</strong>' +
+              '<div class="muted">Última: <strong>' + escapeHtml(summary.lastRunAt ? formatDateTime(summary.lastRunAt) : 'Sem execução') + '</strong> (' + escapeHtml(summary.lastRunDurationMs || 0) + ' ms)</div>' +
+              '<div class="muted">Próxima estimada: <strong>' + escapeHtml(quota.nextEstimatedRunAt ? formatDateTime(quota.nextEstimatedRunAt) : '—') + '</strong></div>' +
+              '<div class="muted">Modo: ' + escapeHtml(quota.lastRunMode || '—') + '</div>' +
+            '</div>' +
+            '<div class="rel-env-card">' +
+              '<strong>Cotas UrlFetch & Armazenamento</strong>' +
+              '<div class="muted">Consumo nominal: <strong>' + escapeHtml(quota.checksPerDayNominal || 0) + '</strong> / ' + escapeHtml(quota.gasConsumerDailyUrlFetchLimit || 20000) + ' req/dia (sem redirects)</div>' +
+              '<div class="muted">MONITOR_*: <strong>' + escapeHtml(storage.totalBytes || 0) + ' bytes</strong> em ' + escapeHtml(storage.keysCount || 0) + ' chaves (teto ' + escapeHtml(storage.maxPerPropertyBytes || 7800) + ' B/chave)</div>' +
+              '<div class="muted">Amostras acumuladas: ' + escapeHtml(storage.totalEverSamples || 0) + '</div>' +
+            '</div>';
+        }
+
+        document.getElementById('monEnabled').value = settings.enabled === false ? 'false' : 'true';
+        document.getElementById('monInterval').value = String(settings.intervalMinutes || 15);
+        document.getElementById('monSlowMs').value = settings.slowThresholdMs || 3000;
+        document.getElementById('monFailThresh').value = settings.failureThreshold || 2;
+        document.getElementById('monRecoveryThresh').value = settings.recoverySuccessThreshold || 2;
+        document.getElementById('monStaleMin').value = settings.staleMinutes || 45;
+        document.getElementById('monHistDays').value = settings.historyRetentionDays || 3;
+        document.getElementById('monDailyDays').value = settings.dailyRetentionDays || 21;
+        document.getElementById('monIncDays').value = settings.incidentRetentionDays || 90;
+        document.getElementById('monFetchMode').value = settings.useFetchAll ? 'true' : 'false';
+
+        var envWrap = document.getElementById('monEnvTogglesWrap');
+        if (envWrap) {
+          var envs = mon.environments || {};
+          var keys = Object.keys(envs);
+          var envRows = keys.map(function (k) {
+            var ev = envs[k];
+            var cfgActive = ev.configAtivo !== false;
+            var monOn = ev.monitorEnabled !== false;
+            return '<tr>' +
+              '<td><code>' + escapeHtml(k) + '</code><div class="muted">' + escapeHtml(ev.unidade + ' ' + ev.ambiente) + '</div></td>' +
+              '<td>' + (cfgActive ? '<span class="pill pill-oficial">Ativo</span>' : '<span class="pill pill-danger">Inativo em CONFIG_LINKS</span>') + '</td>' +
+              '<td><select id="mon_env_en_' + k + '" style="min-width:120px;"><option value="true"' + (monOn ? ' selected' : '') + '>Habilitado</option><option value="false"' + (!monOn ? ' selected' : '') + '>Desabilitado</option></select></td>' +
+              '<td><strong>' + escapeHtml(ev.effectiveStatus) + '</strong><div class="muted">HTTP ' + escapeHtml(ev.httpStatus || 0) + ' · ' + escapeHtml(ev.durationMs || 0) + ' ms</div></td>' +
+              '<td>' + escapeHtml(ev.lastCheckedAt ? formatDateTime(ev.lastCheckedAt) : 'Sem amostra') + '</td>' +
+              '<td>' + escapeHtml(ev.lastErrorSanitized || ev.statusReason || '—') + '</td>' +
+            '</tr>';
+          }).join('');
+          envWrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Ambiente</th><th>CONFIG_LINKS</th><th>Monitoramento</th><th>Estado</th><th>Última Coleta</th><th>Detalhe / Último Erro</th></tr></thead><tbody>' + envRows + '</tbody></table></div>';
+        }
+
+        var incWrap = document.getElementById('monIncidentsWrap');
+        if (incWrap) {
+          var incidents = mon.incidents || [];
+          if (incidents.length === 0) {
+            incWrap.innerHTML = '<p class="muted">Nenhum incidente registrado até o momento.</p>';
+          } else {
+            var incRows = incidents.map(function (inc) {
+              var opts = ['INVESTIGACAO', 'CONFIRMADO', 'RESOLVIDO', 'ENCERRADO_ADMIN'].map(function (st) {
+                return '<option value="' + st + '"' + (inc.estado === st ? ' selected' : '') + '>' + st + '</option>';
+              }).join('');
+              return '<tr>' +
+                '<td><code>' + escapeHtml(inc.id) + '</code><div class="muted">' + escapeHtml(inc.unidade + ' ' + inc.ambiente) + '</div></td>' +
+                '<td><code>' + escapeHtml(inc.categoria) + '</code><div class="muted">' + escapeHtml(inc.descricao || '') + '</div></td>' +
+                '<td><div>Início: ' + escapeHtml(formatDateTime(inc.inicio)) + '</div><div class="muted">Última: ' + escapeHtml(formatDateTime(inc.ultimaOcorrencia)) + '</div></td>' +
+                '<td><select id="inc_st_' + escapeHtml(inc.id) + '">' + opts + '</select></td>' +
+                '<td><input type="text" id="inc_obs_' + escapeHtml(inc.id) + '" value="' + escapeHtml(inc.observacao || '') + '" maxlength="280" placeholder="Observação administrativa"></td>' +
+                '<td style="white-space:nowrap;">' +
+                  '<button type="button" class="btn btn-secondary btn-inc-save" data-id="' + escapeHtml(inc.id) + '" style="padding:0.35rem 0.6rem;font-size:12px;">Salvar</button> ' +
+                  '<button type="button" class="btn btn-danger btn-inc-close" data-id="' + escapeHtml(inc.id) + '" style="padding:0.35rem 0.6rem;font-size:12px;">Encerrar</button>' +
+                '</td>' +
+              '</tr>';
+            }).join('');
+            incWrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Incidente</th><th>Categoria / Descrição</th><th>Janela</th><th>Estado</th><th>Observação</th><th>Ações</th></tr></thead><tbody>' + incRows + '</tbody></table></div>';
+
+            var saveIncBtns = incWrap.querySelectorAll('.btn-inc-save');
+            for (var si = 0; si < saveIncBtns.length; si++) {
+              saveIncBtns[si].addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                var payload = {
+                  id: id,
+                  estado: document.getElementById('inc_st_' + id).value,
+                  observacao: document.getElementById('inc_obs_' + id).value.trim()
+                };
+                callServer('apiUpdateMonitoringIncident', [payload, authToken], function (res) {
+                  showToast(res.message || 'Incidente atualizado.', 'success');
+                  loadBootstrap();
+                }, function (err) {
+                  showToast('Erro: ' + err.message, 'error');
+                });
+              });
+            }
+            var closeIncBtns = incWrap.querySelectorAll('.btn-inc-close');
+            for (var ci = 0; ci < closeIncBtns.length; ci++) {
+              closeIncBtns[ci].addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                var payload = {
+                  id: id,
+                  estado: 'ENCERRADO_ADMIN',
+                  observacao: document.getElementById('inc_obs_' + id).value.trim()
+                };
+                callServer('apiUpdateMonitoringIncident', [payload, authToken], function (res) {
+                  showToast(res.message || 'Incidente encerrado.', 'success');
+                  loadBootstrap();
+                }, function (err) {
+                  showToast('Erro: ' + err.message, 'error');
+                });
+              });
+            }
+          }
+        }
+
+        var maintWrap = document.getElementById('monMaintListWrap');
+        if (maintWrap) {
+          var maints = mon.maintenances || [];
+          if (maints.length === 0) {
+            maintWrap.innerHTML = '<p class="muted">Nenhuma janela de manutenção cadastrada.</p>';
+          } else {
+            var mRows = maints.map(function (mt) {
+              return '<tr>' +
+                '<td><strong>' + escapeHtml(mt.titulo) + '</strong><div class="muted">' + escapeHtml(mt.descricao || '') + '</div></td>' +
+                '<td>' + escapeHtml(mt.alvo) + '</td>' +
+                '<td><div>' + escapeHtml(formatDateTime(mt.inicio)) + '</div><div class="muted">até ' + escapeHtml(formatDateTime(mt.fim)) + '</div></td>' +
+                '<td><span class="pill ' + (mt.estado === 'EM_ANDAMENTO' || mt.estado === 'PROGRAMADA' ? 'pill-audit' : 'pill-neutral') + '">' + escapeHtml(mt.estado) + '</span></td>' +
+                '<td>' + escapeHtml(mt.aviso || '—') + '</td>' +
+                '<td style="white-space:nowrap;">' +
+                  '<button type="button" class="btn btn-secondary btn-mnt-edit" data-id="' + escapeHtml(mt.id) + '" style="padding:0.3rem 0.55rem;font-size:12px;">Editar</button> ' +
+                  '<button type="button" class="btn btn-secondary btn-mnt-end" data-id="' + escapeHtml(mt.id) + '" style="padding:0.3rem 0.55rem;font-size:12px;">Encerrar</button> ' +
+                  '<button type="button" class="btn btn-danger btn-mnt-cancel" data-id="' + escapeHtml(mt.id) + '" style="padding:0.3rem 0.55rem;font-size:12px;">Cancelar</button>' +
+                '</td>' +
+              '</tr>';
+            }).join('');
+            maintWrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Título</th><th>Alvo</th><th>Janela (America/Sao_Paulo)</th><th>Estado</th><th>Aviso</th><th>Ações</th></tr></thead><tbody>' + mRows + '</tbody></table></div>';
+
+            var editMnt = maintWrap.querySelectorAll('.btn-mnt-edit');
+            for (var em = 0; em < editMnt.length; em++) {
+              editMnt[em].addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                var found = (bootstrapData.monitoring.maintenances || []).filter(function (x) { return x.id === id; })[0];
+                if (!found) return;
+                document.getElementById('maintId').value = found.id;
+                document.getElementById('maintTitle').value = found.titulo || '';
+                document.getElementById('maintDesc').value = found.descricao || '';
+                document.getElementById('maintAviso').value = found.aviso || '';
+                document.getElementById('maintAlvo').value = found.alvo || 'TODAS';
+                document.getElementById('maintEstado').value = (found.estado === 'PROGRAMADA' || found.estado === 'EM_ANDAMENTO') ? found.estado : 'EM_ANDAMENTO';
+                document.getElementById('maintInicio').value = toSaoPauloDatetimeLocal(found.inicio);
+                document.getElementById('maintFim').value = toSaoPauloDatetimeLocal(found.fim);
+                document.getElementById('maintFormTitle').textContent = 'Editar Janela de Manutenção';
+              });
+            }
+            var endMnt = maintWrap.querySelectorAll('.btn-mnt-end');
+            for (var en = 0; en < endMnt.length; en++) {
+              endMnt[en].addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                callServer('apiUpdateMonitoringMaintenanceStatus', [id, 'ENCERRADA', authToken], function (res) {
+                  showToast(res.message || 'Manutenção encerrada.', 'success');
+                  loadBootstrap();
+                }, function (err) {
+                  showToast('Erro: ' + err.message, 'error');
+                });
+              });
+            }
+            var cancelMnt = maintWrap.querySelectorAll('.btn-mnt-cancel');
+            for (var cm = 0; cm < cancelMnt.length; cm++) {
+              cancelMnt[cm].addEventListener('click', function () {
+                var id = this.getAttribute('data-id');
+                callServer('apiUpdateMonitoringMaintenanceStatus', [id, 'CANCELADA', authToken], function (res) {
+                  showToast(res.message || 'Manutenção cancelada.', 'success');
+                  loadBootstrap();
+                }, function (err) {
+                  showToast('Erro: ' + err.message, 'error');
+                });
+              });
+            }
+          }
+        }
+      }
+
       function loadBootstrap() {
         if (isBusy) return;
         isBusy = true;
@@ -1001,6 +1383,7 @@
           renderReleases(res);
           renderAnnouncementsAdmin(res.announcements);
           renderSettings(res);
+          renderMonitoringAdmin(res.monitoring);
         }, function (err) {
           isBusy = false;
           document.getElementById('lastUpdate').textContent = 'Erro: ' + err.message;
@@ -1183,6 +1566,90 @@
             }
           }, function (err) {
             showToast('Acesso negado: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnMonRunNow').addEventListener('click', function () {
+          showToast('Executando verificação dos ambientes ativos...', 'success');
+          callServer('apiRunManualMonitoringCheck', [authToken], function (res) {
+            showToast('Verificação concluída (' + (res.checkedCount || 0) + ' ambientes em ' + (res.durationMs || 0) + ' ms).', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro na verificação: ' + err.message, 'error');
+          }, 45000);
+        });
+
+        document.getElementById('btnMonSyncTrigger').addEventListener('click', function () {
+          callServer('apiSyncMonitoringTrigger', [authToken], function (res) {
+            if (res && res.success) {
+              showToast('Trigger sincronizado (' + (res.action || 'ok') + ').', 'success');
+            } else {
+              showToast('Falha ao sincronizar trigger: ' + ((res && res.error) || 'erro'), 'error');
+            }
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro ao sincronizar trigger: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnSaveMonSettings').addEventListener('click', function () {
+          var envMap = {};
+          var keys = bootstrapData && bootstrapData.config ? Object.keys(bootstrapData.config) : [];
+          for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            var sel = document.getElementById('mon_env_en_' + k);
+            if (sel) envMap[k] = { enabled: sel.value === 'true' };
+          }
+          var payload = {
+            enabled: document.getElementById('monEnabled').value === 'true',
+            intervalMinutes: Number(document.getElementById('monInterval').value),
+            slowThresholdMs: Number(document.getElementById('monSlowMs').value),
+            failureThreshold: Number(document.getElementById('monFailThresh').value),
+            recoverySuccessThreshold: Number(document.getElementById('monRecoveryThresh').value),
+            staleMinutes: Number(document.getElementById('monStaleMin').value),
+            historyRetentionDays: Number(document.getElementById('monHistDays').value),
+            dailyRetentionDays: Number(document.getElementById('monDailyDays').value),
+            incidentRetentionDays: Number(document.getElementById('monIncDays').value),
+            useFetchAll: document.getElementById('monFetchMode').value === 'true',
+            environments: envMap
+          };
+          callServer('apiSaveMonitoringSettings', [payload, authToken], function (res) {
+            showToast(res.message || 'Monitoramento salvo.', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnResetMaintForm').addEventListener('click', function () {
+          document.getElementById('maintId').value = '';
+          document.getElementById('maintTitle').value = '';
+          document.getElementById('maintDesc').value = '';
+          document.getElementById('maintAviso').value = '';
+          document.getElementById('maintAlvo').value = 'TODAS';
+          document.getElementById('maintEstado').value = 'EM_ANDAMENTO';
+          document.getElementById('maintInicio').value = '';
+          document.getElementById('maintFim').value = '';
+          document.getElementById('maintFormTitle').textContent = 'Nova Janela de Manutenção';
+        });
+
+        document.getElementById('btnSaveMaint').addEventListener('click', function () {
+          var payload = {
+            id: document.getElementById('maintId').value.trim() || undefined,
+            titulo: document.getElementById('maintTitle').value.trim(),
+            descricao: document.getElementById('maintDesc').value.trim(),
+            aviso: document.getElementById('maintAviso').value.trim(),
+            alvo: document.getElementById('maintAlvo').value,
+            estado: document.getElementById('maintEstado').value,
+            inicio: document.getElementById('maintInicio').value,
+            fim: document.getElementById('maintFim').value
+          };
+          callServer('apiSaveMonitoringMaintenance', [payload, authToken], function (res) {
+            showToast(res.message || 'Manutenção salva.', 'success');
+            document.getElementById('btnResetMaintForm').click();
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
           });
         });
       }

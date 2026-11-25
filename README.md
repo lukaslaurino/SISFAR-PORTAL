@@ -1,6 +1,6 @@
-# SISFAR-PORTAL 2.0
+# SISFAR-PORTAL 2.1
 
-Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia Prisional**, hospedada diretamente no **Google Apps Script (`HtmlService`)** sem dependência externa obrigatória nem consultas a bases clínicas.
+Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia Prisional**, hospedada diretamente no **Google Apps Script (`HtmlService`)** com **Monitoramento Operacional Periódico Nativo**, sem dependência externa obrigatória nem consultas a bases clínicas.
 
 ---
 
@@ -12,9 +12,9 @@ Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia P
 ├── .claspignore          # Filtro de arquivos enviados ao Apps Script
 ├── backend/
 │   ├── appsscript.json   # Manifesto do Web App Apps Script (V8, ANYONE_ANONYMOUS)
-│   ├── Code.js           # Rotas GET/POST, autenticação, HMAC-SHA256 e persistência segmentada
-│   ├── Portal.html       # Interface pública Clinical Clean 2.0 (claro/escuro, 3 cards, releases, comunicados)
-│   └── Admin.html        # Central Administrativa (Ambientes, Releases, Comunicados, Configurações)
+│   ├── Code.js           # Rotas GET/POST, autenticação, HMAC-SHA256, monitoramento e persistência
+│   ├── Portal.html       # Interface pública Clinical Clean 2.1 (Início, Status, Atualizações, Comunicados)
+│   └── Admin.html        # Central Administrativa (Ambientes, Monitoramento, Releases, Comunicados, Configurações)
 ├── tests/
 │   └── portal.test.js    # Suíte automatizada de testes (Node test runner)
 ├── links.js              # Fallback estático dos 6 ambientes canônicos
@@ -26,36 +26,44 @@ Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia P
 
 ## Rotas e Endpoints
 
-- `?view=portal` (ou raiz `/exec`): **Portal Público 2.0** (`Início` com 3 cards CPPA/PEPOA/MADRE e acessos OFICIAL/AUDIT, `Atualizações` filtráveis por unidade/ambiente/versão, `Comunicados` vigentes e tema claro/escuro persistido).
-- `?view=admin` ou `?admin=1`: **Central Administrativa** em 4 abas (`Ambientes`, `Releases`, `Comunicados`, `Configurações`).
+- `?view=portal` (ou raiz `/exec`): **Portal Público 2.1** (`Início`, `Status` com timeline com lacunas explícitas e gráfico SVG leve, `Atualizações` e `Comunicados`).
+- `?view=admin` ou `?admin=1`: **Central Administrativa** em 5 abas (`Ambientes`, `Monitoramento`, `Releases`, `Comunicados`, `Configurações`).
 - `?action=get` (ou `?format=json`): Leitura JSON pública somente-leitura dos 6 ambientes em `CONFIG_LINKS`.
-- `?action=bootstrap`: Leitura JSON pública de links, estado atual por ambiente, histórico segmentado e comunicados vigentes.
-- `POST` (`action: "publish_event"`): Ingestão autenticada por **HMAC-SHA256** (`timestamp` + `eventId` + campos canônicos no corpo do POST), com idempotência por `eventId`, proteção contra replay e preservação de links/estados mais novos contra eventos atrasados.
+- `?action=bootstrap`: Leitura JSON pública de links, releases, comunicados vigentes e resumo/histórico de monitoramento.
+- `?action=status`: Leitura JSON pública somente-leitura do módulo de monitoramento operacional.
+- `POST` (`action: "publish_event"`): Ingestão autenticada por **HMAC-SHA256**.
+- `POST` (`action: "admin_*"`): Operações administrativas autenticadas (Google allowlist ou `authToken` de sessão), incluindo `admin_monitoring_*`.
+
+---
+
+## Monitoramento Operacional 2.1 — Critérios, Cotas e Limitações
+
+- **Escopo estritamente HTTP**: `UrlFetchApp` executa sondas periódicas apenas nos ambientes ativos em `CONFIG_LINKS` e habilitados no painel, com `followRedirects: false` e `muteHttpExceptions: true`. **HTTP 200 não comprova função clínica** (não realiza login clínico nem acessa pacientes, APAC, prescrições ou planilhas).
+- **Classificações**:
+  - `ACESSIVEL`: HTTP 2xx (ou 3xx técnico não-login) abaixo do limiar de lentidão (`slowThresholdMs`, padrão 3000 ms).
+  - `RESPOSTA_LENTA`: HTTP acessível com duração `>= slowThresholdMs`.
+  - `FALHA_VERIFICACAO`: 1ª falha HTTP (403/404/5xx/página de erro) ou erro de rede/timeout antes de atingir o limiar de incidente.
+  - `INDISPONIVEL`: após falhas consecutivas `>= failureThreshold` (padrão 2), abrindo incidente agrupado (`INVESTIGACAO` → `CONFIRMADO` → `RESOLVIDO`/`ENCERRADO_ADMIN`). Recuperação configurável via `recoverySuccessThreshold` (padrão 2 sucessos).
+  - `AUTENTICACAO_NECESSARIA`: HTTP 401, redirecionamento (3xx) para `accounts.google.com` ou página de login Google HTTP 200. Contabilizado em **Não verificáveis** (nunca como sucesso nem como queda).
+  - `MANUTENCAO`: janela ativa cadastrada (exibição `America/Sao_Paulo`). Preserva evidências reais em `MONITOR_STATE` e retorna a elas automaticamente ao encerrar ou expirar.
+  - `DESATIVADO`: desativado em `CONFIG_LINKS` ou individualmente no monitoramento.
+  - `DESCONHECIDO`: sem amostra coletada.
+  - `DADOS_DESATUALIZADOS`: última amostra anterior a `staleMinutes` (padrão 45 min).
+- **Avaliação `UrlFetchApp.fetchAll` vs `fetch` isolado**:
+  - `fetchAll` reduz o tempo total do lote (~2s vs ~8-10s), porém no GAS atribui o tempo total do lote a todas as respostas e lança exceção no lote inteiro se 1 endpoint falhar por DNS/rede. Por padrão usa-se `fetch` isolado por endpoint (latência real individual e falha isolada), com suporte opcional a `useFetchAll` + fallback automático para sondagem isolada.
+- **Cotas e Limites Reais (Google Apps Script)**:
+  - **UrlFetchApp**: cota diária nominal de conta Google padrão = **20.000 chamadas/dia** (Workspace até 100.000/dia). Com 6 ambientes a cada **15 minutos** e `followRedirects: false`, o consumo nominal é **576 verificações/dia** (~2,88% da cota padrão).
+  - **Triggers e Timeout**: limite de execução por invocação de time-based trigger = **6 minutos**; `UrlFetchApp` possui timeout interno de ~60s por requisição (não configurável por parâmetro no GAS).
+  - **Concorrência**: `runScheduledMonitoringCheck()` e todas escritas usam `LockService.getScriptLock()` (`waitLock(10000)`), mantendo I/O de rede fora do lock.
+  - **Armazenamento `PropertiesService`**: teto de **9 KB por propriedade** (limite seguro adotado `7800` bytes) e **500 KB totais** por projeto. Estruturas separadas: `MONITOR_SETTINGS`, `MONITOR_STATE`, `MONITOR_HISTORY` (+ `MONITOR_HISTORY_SEG_0..5` e agregação diária limitada), `MONITOR_INCIDENTS` e `MONITOR_MAINTENANCES`, totalizando teto máximo ~70 KB.
+- **Disponibilidade Observada**: exibida somente com `>= 4` amostras verificáveis na janela, mostrando cobertura real e critérios. Lacunas, autenticação e manutenção nunca contam como sucesso e não constituem SLA.
 
 ---
 
 ## Persistência em `PropertiesService`
 
-- `CONFIG_LINKS`: Mantém exclusivamente os 6 IDs canônicos (`cppaOficial`, `pepoaOficial`, `madreOficial`, `cppaAudit`, `pepoaAudit`, `madreAudit`), URLs, `ordem` e `ativo`. Eventos de release não sobrescrevem links configurados.
-- `SISFAR_RELEASE_STATE_V2`: Estado efetivo mais recente por ambiente (diferenciando `git`, `candidato`, `publicado` e `homologado`).
-- `SISFAR_RELEASE_HIST_META_V2` + `SISFAR_RELEASE_HIST_SEG_*`: Histórico limitado e segmentado (respeitando o teto de 9 KB por propriedade) + `SISFAR_RELEASE_DEDUPE_V2`.
-- `SISFAR_ANNOUNCEMENTS_META_V2` + `SISFAR_ANNOUNCEMENTS_SEG_*`: Comunicados administráveis com validade e filtro por unidade.
-- `SISFAR_PORTAL_SETTINGS_V2`: Configurações operacionais da central.
-
----
-
-## Segurança e Execução Pública
-
-- Funções internas de escrita (`saveConfigInternal_`, `recordReleaseEventInternal_`, etc.) possuem sufixo `_` e são privadas no Apps Script.
-- A Central Administrativa autentica via Conta Google em allowlist (`ADMIN_EMAILS`). Caso a execução pública (`ANYONE_ANONYMOUS`) não propague `Session.getActiveUser().getEmail()`, configure uma chave administrativa de fallback executando uma vez no Editor do Apps Script:
-  ```js
-  configurarChaveAdminPortal_("SUA_CHAVE_FORTE_MIN_10_CHARS");
-  ```
-- Para habilitar ingestão pós-deploy via HMAC-SHA256, defina o segredo privado compartilhado no Editor do Apps Script:
-  ```js
-  configurarSegredoWebhookPortal_("SEU_SEGREDO_HMAC_MIN_16_CHARS");
-  ```
-  E no ambiente do publicador (`SISFARPRISIONAL`), defina `SISFAR_PORTAL_WEBHOOK_SECRET` (ou `~/.sisfar-portal-publisher.json` com permissão `0600`, fora do Git).
+- `CONFIG_LINKS`, `SISFAR_RELEASE_STATE_V2`, `SISFAR_RELEASE_HIST_*`, `SISFAR_ANNOUNCEMENTS_*`, `SISFAR_PORTAL_SETTINGS_V2`: preservados integralmente.
+- `MONITOR_SETTINGS`, `MONITOR_STATE`, `MONITOR_HISTORY` (+ `MONITOR_HISTORY_SEG_*`), `MONITOR_INCIDENTS`, `MONITOR_MAINTENANCES`: estruturas isoladas do monitoramento.
 
 ---
 
@@ -65,5 +73,5 @@ Central institucional integrada do **SISFAR — Sistema Integrado de Farmácia P
 node --test tests/portal.test.js
 npx --yes @google/clasp@3.4.1 show-file-status
 npx --yes @google/clasp@3.4.1 push
-npx --yes @google/clasp@3.4.1 deploy -i AKfycbzKRSk7evTLpYUmktyE94Cs54w-F9NtJzo00HmeBSwgxG-C-gPxSNVflz1dX7sbuVg4 --description "SISFAR-PORTAL 2.0"
+npx --yes @google/clasp@3.4.1 deploy -i AKfycbzKRSk7evTLpYUmktyE94Cs54w-F9NtJzo00HmeBSwgxG-C-gPxSNVflz1dX7sbuVg4 --description "SISFAR-PORTAL 2.1"
 ```

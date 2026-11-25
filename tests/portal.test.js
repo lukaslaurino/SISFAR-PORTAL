@@ -57,9 +57,30 @@ function createGasContext(options = {}) {
   const cacheStore = Object.create(null);
   let activeEmail = options.userEmail !== undefined ? options.userEmail : '';
   const serviceUrl = options.serviceUrl !== undefined ? options.serviceUrl : WEBAPP_EXEC_URL;
+  let lockCalls = 0;
+  let unlockCalls = 0;
+  let mockFetchHandler = options.fetchHandler || null;
+  let mockFetchAllHandler = options.fetchAllHandler || null;
+  const triggers = (options.initialTriggers || []).map((t, idx) => ({
+    id: t.id || `trig-${idx + 1}`,
+    handler: t.handler || 'runScheduledMonitoringCheck',
+    intervalMinutes: t.intervalMinutes || 15
+  }));
+  let triggerSeq = triggers.length + 1;
 
   function toSignedByteArray(buf) {
     return Array.from(buf, (b) => (b > 127 ? b - 256 : b));
+  }
+
+  function makeResponseObj(res) {
+    const code = res.status !== undefined ? res.status : 200;
+    const headers = res.headers || {};
+    const body = res.body !== undefined ? String(res.body) : '';
+    return {
+      getResponseCode() { return code; },
+      getHeaders() { return headers; },
+      getContentText() { return body; }
+    };
   }
 
   const context = {
@@ -111,9 +132,29 @@ function createGasContext(options = {}) {
     LockService: {
       getScriptLock() {
         return {
-          waitLock() {},
-          releaseLock() {}
+          waitLock() { lockCalls++; },
+          releaseLock() { unlockCalls++; }
         };
+      }
+    },
+    UrlFetchApp: {
+      fetch(url, params) {
+        if (mockFetchHandler) {
+          const out = mockFetchHandler(url, params);
+          if (out instanceof Error) throw out;
+          return makeResponseObj(out);
+        }
+        return makeResponseObj({ status: 200, body: '<html><title>SISFAR</title></html>' });
+      },
+      fetchAll(reqs) {
+        if (mockFetchAllHandler) {
+          const arr = mockFetchAllHandler(reqs);
+          return arr.map((item) => {
+            if (item instanceof Error) throw item;
+            return makeResponseObj(item);
+          });
+        }
+        return reqs.map((r) => context.UrlFetchApp.fetch(r.url, r));
       }
     },
     Utilities: {
@@ -155,6 +196,37 @@ function createGasContext(options = {}) {
         return {
           getUrl() {
             return serviceUrl;
+          }
+        };
+      },
+      getProjectTriggers() {
+        return triggers.map((t) => ({
+          getHandlerFunction() { return t.handler; },
+          getUniqueId() { return t.id; },
+          _raw: t
+        }));
+      },
+      deleteTrigger(trigObj) {
+        const uid = trigObj && trigObj.getUniqueId ? trigObj.getUniqueId() : null;
+        const idx = triggers.findIndex((t) => t.id === uid);
+        if (idx !== -1) triggers.splice(idx, 1);
+      },
+      newTrigger(handlerName) {
+        let mins = 15;
+        return {
+          timeBased() {
+            return {
+              everyMinutes(m) { mins = m; return this; },
+              everyHours(h) { mins = h * 60; return this; },
+              create() {
+                const created = { id: `trig-${triggerSeq++}`, handler: handlerName, intervalMinutes: mins };
+                triggers.push(created);
+                return {
+                  getHandlerFunction() { return created.handler; },
+                  getUniqueId() { return created.id; }
+                };
+              }
+            };
           }
         };
       }
@@ -225,6 +297,10 @@ function createGasContext(options = {}) {
     ctx: context,
     store,
     cacheStore,
+    triggers,
+    getLockStats() { return { lockCalls, unlockCalls }; },
+    setFetchHandler(fn) { mockFetchHandler = fn; },
+    setFetchAllHandler(fn) { mockFetchAllHandler = fn; },
     setUserEmail(email) {
       activeEmail = email;
     }
@@ -906,4 +982,353 @@ test('doPost ações admin_* exigem autenticação (Google allowlist ou authToke
   }).getContent());
   assert.equal(cfgRes.success, true);
   assert.deepEqual(ctx.getConfig(), bootRes.config);
+});
+
+test('Motor de monitoramento 2.1: classificação HTTP 200, login 200, redirect Google, 403, 404, 500, falha rede, lento e desativado', () => {
+  const { SISFAR_CONFIG } = require(LINKS_JS_PATH);
+  const fetchedUrls = [];
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchHandler(url, params) {
+      fetchedUrls.push({ url, followRedirects: params.followRedirects, muteHttpExceptions: params.muteHttpExceptions });
+      if (url === SISFAR_CONFIG.ambientes.cppaOficial.url) {
+        return { status: 200, body: '<!doctype html><html><title>SISFAR</title><body>App Paciente_TOKEN_NAO_PERSISTIR</body></html>' };
+      }
+      if (url === SISFAR_CONFIG.ambientes.pepoaOficial.url) {
+        return { status: 200, body: '<html><title>Sign in - Google Accounts</title><form id="gaia_loginform"></form></html>' };
+      }
+      if (url === SISFAR_CONFIG.ambientes.madreOficial.url) {
+        return { status: 302, headers: { Location: 'https://accounts.google.com/v3/signin?continue=https://script.google.com/secret_ticket=123' } };
+      }
+      if (url === SISFAR_CONFIG.ambientes.cppaAudit.url) {
+        return { status: 403, body: 'Forbidden' };
+      }
+      if (url === SISFAR_CONFIG.ambientes.pepoaAudit.url) {
+        return { status: 404, body: 'Not Found' };
+      }
+      return { status: 500, body: 'Internal Server Error' };
+    }
+  });
+
+  // Desativar madreAudit administrativamente e configurar slowThreshold baixo para testar lentidão
+  const cfg = JSON.parse(JSON.stringify(gas.ctx.getConfig()));
+  cfg.madreAudit.ativo = false;
+  gas.ctx.apiSaveAdminConfig(cfg);
+  const originalCppaUrl = cfg.cppaOficial.url;
+
+  const res = gas.ctx.runScheduledMonitoringCheck();
+  assert.equal(res.success, true);
+  assert.equal(res.checkedCount, 5); // madreAudit desativado não é sondado!
+  assert.equal(fetchedUrls.some((f) => f.url === cfg.madreAudit.url), false);
+  for (const f of fetchedUrls) {
+    assert.equal(f.followRedirects, false, 'Sondas não devem seguir redirects');
+    assert.equal(f.muteHttpExceptions, true);
+  }
+
+  const boot = gas.ctx.apiGetPublicBootstrap();
+  const envs = boot.monitoring.environments;
+  assert.equal(envs.cppaOficial.effectiveStatus, 'ACESSIVEL');
+  assert.equal(envs.pepoaOficial.effectiveStatus, 'AUTENTICACAO_NECESSARIA');
+  assert.equal(envs.madreOficial.effectiveStatus, 'AUTENTICACAO_NECESSARIA');
+  assert.equal(envs.cppaAudit.effectiveStatus, 'FALHA_VERIFICACAO'); // 1ª falha
+  assert.equal(envs.pepoaAudit.effectiveStatus, 'FALHA_VERIFICACAO'); // 1ª falha
+  assert.equal(envs.madreAudit.effectiveStatus, 'DESATIVADO');
+  assert.equal(boot.monitoring.summary.accessible, 1);
+  assert.equal(boot.monitoring.summary.nonVerifiable, 3); // 2 auth + 1 desativado (nunca contados como sucesso!)
+  assert.equal(boot.monitoring.incidents.length, 0); // ainda na 1ª falha
+
+  // Não persistir conteúdo integral/tokens/cookies
+  const dumped = JSON.stringify(gas.store);
+  assert.equal(dumped.includes('Paciente_TOKEN_NAO_PERSISTIR'), false);
+  assert.equal(dumped.includes('secret_ticket=123'), false);
+  assert.equal(gas.ctx.getConfig().cppaOficial.url, originalCppaUrl);
+
+  // Testar 500 e erro de rede + lentidão com fetchAll fallback
+  gas.ctx.apiSaveMonitoringSettings({ slowThresholdMs: 500, useFetchAll: true });
+  gas.setFetchAllHandler(() => { throw new Error('Batch network error'); });
+  gas.setFetchHandler((url) => {
+    if (url === cfg.cppaOficial.url) {
+      const t0 = Date.now();
+      while (Date.now() - t0 < 515) {} // simula resposta lenta >= 500ms
+      return { status: 200, body: '<html><title>OK</title></html>' };
+    }
+    if (url === cfg.cppaAudit.url) {
+      throw new Error('Request failed for https://script.google.com/macros/s/test?token=abc: Timed out');
+    }
+    if (url === cfg.pepoaAudit.url) {
+      return { status: 500, body: 'Server error' };
+    }
+    return { status: 302, headers: { Location: 'https://accounts.google.com/ServiceLogin' } };
+  });
+
+  const res2 = gas.ctx.runScheduledMonitoringCheck();
+  assert.equal(res2.mode, 'isolated_fetch'); // fallback automático quando fetchAll falha
+  const envs2 = gas.ctx.apiGetPublicBootstrap().monitoring.environments;
+  assert.equal(envs2.cppaOficial.effectiveStatus, 'RESPOSTA_LENTA');
+  assert.equal(envs2.cppaAudit.effectiveStatus, 'INDISPONIVEL');
+  assert.equal(envs2.pepoaAudit.effectiveStatus, 'INDISPONIVEL');
+  assert.equal(envs2.cppaAudit.lastErrorSanitized.includes('token=abc'), false);
+});
+
+test('Incidentes consecutivos, estados administrativos e regra de recuperação configurável', () => {
+  const { SISFAR_CONFIG } = require(LINKS_JS_PATH);
+  let cppaOk = false;
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchHandler(url) {
+      if (url === SISFAR_CONFIG.ambientes.cppaOficial.url) {
+        return cppaOk ? { status: 200, body: '<html>OK</html>' } : { status: 500, body: 'Down' };
+      }
+      return { status: 200, body: '<html>OK</html>' };
+    }
+  });
+
+  // 1ª falha -> FALHA_VERIFICACAO, sem incidente
+  gas.ctx.runScheduledMonitoringCheck();
+  let mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'FALHA_VERIFICACAO');
+  assert.equal(mon.incidents.length, 0);
+
+  // 2ª falha consecutiva -> INDISPONIVEL, abre incidente INVESTIGACAO
+  gas.ctx.runScheduledMonitoringCheck();
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'INDISPONIVEL');
+  assert.equal(mon.incidents.length, 1);
+  const incId = mon.incidents[0].id;
+  assert.equal(mon.incidents[0].estado, 'INVESTIGACAO');
+  assert.equal(mon.incidents[0].falhasConsecutivas, 2);
+
+  // Admin confirma incidente e adiciona observação
+  const upd = gas.ctx.apiUpdateMonitoringIncident({
+    id: incId,
+    estado: 'CONFIRMADO',
+    observacao: 'Falha confirmada no container CPPA'
+  });
+  assert.equal(upd.item.estado, 'CONFIRMADO');
+  assert.equal(upd.item.observacao, 'Falha confirmada no container CPPA');
+
+  // Regra de recuperação padrão = 2 sucessos consecutivos: 1º sucesso ainda mantém INDISPONIVEL (recoveringCount = 1)
+  cppaOk = true;
+  gas.ctx.runScheduledMonitoringCheck();
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'INDISPONIVEL');
+  assert.equal(mon.environments.cppaOficial.recoveringCount, 1);
+  assert.equal(mon.incidents[0].estado, 'CONFIRMADO');
+
+  // 2º sucesso consecutivo -> recupera para ACESSIVEL e resolve incidente
+  gas.ctx.runScheduledMonitoringCheck();
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'ACESSIVEL');
+  assert.equal(mon.incidents[0].estado, 'RESOLVIDO');
+  assert.ok(mon.incidents[0].encerramento);
+
+  // Novo incidente encerrado administrativamente
+  cppaOk = false;
+  gas.ctx.runScheduledMonitoringCheck();
+  gas.ctx.runScheduledMonitoringCheck();
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  const inc2 = mon.incidents.find((i) => i.estado === 'INVESTIGACAO');
+  assert.ok(inc2);
+  const closedAdm = gas.ctx.apiUpdateMonitoringIncident({
+    id: inc2.id,
+    estado: 'ENCERRADO_ADMIN',
+    observacao: 'Encerrado manualmente após validação'
+  });
+  assert.equal(closedAdm.item.estado, 'ENCERRADO_ADMIN');
+});
+
+test('Manutenções CRUD (America/Sao_Paulo) preservam evidências reais e retornam ao encerrar; expiração marca DADOS_DESATUALIZADOS', () => {
+  const gas = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  gas.ctx.runScheduledMonitoringCheck();
+
+  const startLocal = new Date(Date.now() - 3600000 - 3 * 3600000).toISOString().slice(0, 16); // -1h em BRT (-03:00)
+  const endLocal = new Date(Date.now() + 3600000 - 3 * 3600000).toISOString().slice(0, 16);   // +1h em BRT (-03:00)
+
+  const mntRes = gas.ctx.apiSaveMonitoringMaintenance({
+    titulo: 'Atualização programada CPPA',
+    descricao: 'Troca de versão do container',
+    aviso: 'Em manutenção preventiva',
+    alvo: 'CPPA',
+    estado: 'EM_ANDAMENTO',
+    inicio: startLocal,
+    fim: endLocal
+  });
+  assert.equal(mntRes.success, true);
+
+  let mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'MANUTENCAO');
+  assert.equal(mon.environments.cppaAudit.effectiveStatus, 'MANUTENCAO');
+  assert.equal(mon.environments.pepoaOficial.effectiveStatus, 'ACESSIVEL');
+  assert.equal(mon.environments.cppaOficial.rawClassification, 'ACESSIVEL', 'Evidência real deve ser preservada');
+
+  // Encerrar manutenção -> retorna imediatamente às evidências reais
+  const endRes = gas.ctx.apiUpdateMonitoringMaintenanceStatus(mntRes.item.id, 'ENCERRADA');
+  assert.equal(endRes.success, true);
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'ACESSIVEL');
+
+  // Expiração (DADOS_DESATUALIZADOS) quando última amostra é mais antiga que staleMinutes
+  const stObj = JSON.parse(gas.store.MONITOR_STATE);
+  stObj.environments.cppaOficial.lastCheckedAt = new Date(Date.now() - 120 * 60000).toISOString();
+  gas.store.MONITOR_STATE = JSON.stringify(stObj);
+  mon = gas.ctx.apiGetPublicBootstrap().monitoring;
+  assert.equal(mon.environments.cppaOficial.effectiveStatus, 'DADOS_DESATUALIZADOS');
+});
+
+test('Retenção, limites PropertiesService (<7800 B), agregação diária, lock de concorrência e deduplicação de triggers', () => {
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    initialTriggers: [
+      { id: 'dup-1', handler: 'runScheduledMonitoringCheck', intervalMinutes: 15 },
+      { id: 'dup-2', handler: 'runScheduledMonitoringCheck', intervalMinutes: 15 },
+      { id: 'other-1', handler: 'otherTriggerHandler', intervalMinutes: 60 }
+    ]
+  });
+
+  // Sincronizar remove duplicatas e mantém exatamente 1 trigger de monitoramento, preservando triggers alheios
+  const sync1 = gas.ctx.apiSyncMonitoringTrigger();
+  assert.equal(sync1.success, true);
+  assert.equal(sync1.installedCount, 1);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+  assert.equal(gas.triggers.filter((t) => t.handler === 'otherTriggerHandler').length, 1);
+
+  // Salvar mesma frequência é idempotente (não duplica)
+  gas.ctx.apiSaveMonitoringSettings({ intervalMinutes: 15 });
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+
+  // Pausar monitoramento remove trigger de monitoramento
+  gas.ctx.apiSaveMonitoringSettings({ enabled: false });
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 0);
+  gas.ctx.apiSaveMonitoringSettings({ enabled: true });
+  assert.equal(gas.triggers.filter((t) => t.handler === 'runScheduledMonitoringCheck').length, 1);
+
+  // Executar 35 ciclos para testar segmentação, retenção e agregação diária dentro de <=7800 bytes por propriedade
+  for (let i = 0; i < 35; i++) {
+    gas.ctx.runScheduledMonitoringCheck();
+  }
+  const bootAdmin = gas.ctx.apiGetAdminBootstrap();
+  const storage = bootAdmin.monitoring.storageStats;
+  assert.ok(storage.segmentsCount <= 6);
+  for (const b of storage.breakdown) {
+    assert.ok(b.bytes <= 7800, `Propriedade ${b.key} excedeu 7800 bytes: ${b.bytes}`);
+  }
+  const dayKeys = Object.keys(bootAdmin.monitoring.daily);
+  assert.equal(dayKeys.length, 1);
+  assert.equal(bootAdmin.monitoring.daily[dayKeys[0]].cppaOficial.count, 35);
+
+  const lockStats = gas.getLockStats();
+  assert.ok(lockStats.lockCalls > 0 && lockStats.lockCalls === lockStats.unlockCalls, 'WaitLock e ReleaseLock devem ser simétricos');
+});
+
+test('Autorização fail-closed no monitoramento, doPost admin_monitoring_*, preservação CONFIG_LINKS e renderização resiliente a falhas', () => {
+  const { ctx, setUserEmail } = createGasContext({
+    userEmail: '',
+    fetchHandler() {
+      return { status: 500, body: 'Total outage' };
+    }
+  });
+
+  // Todas mutações de monitoramento bloqueadas sem autenticação
+  assert.throws(() => ctx.apiSaveMonitoringSettings({ enabled: false }), /Acesso negado/);
+  assert.throws(() => ctx.apiUpdateMonitoringIncident({ id: 'inc-1', estado: 'RESOLVIDO' }), /Acesso negado/);
+  assert.throws(() => ctx.apiSaveMonitoringMaintenance({ titulo: 'x', inicio: '2026-11-25T10:00', fim: '2026-11-25T12:00' }), /Acesso negado/);
+  assert.throws(() => ctx.apiUpdateMonitoringMaintenanceStatus('mnt-1', 'ENCERRADA'), /Acesso negado/);
+  assert.throws(() => ctx.apiRunManualMonitoringCheck(), /Acesso negado/);
+  assert.throws(() => ctx.apiSyncMonitoringTrigger(), /Acesso negado/);
+
+  for (const action of [
+    'admin_monitoring_save_settings',
+    'admin_monitoring_update_incident',
+    'admin_monitoring_save_maintenance',
+    'admin_monitoring_maintenance_status',
+    'admin_monitoring_run_now',
+    'admin_monitoring_sync_trigger'
+  ]) {
+    const res = JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify({ action, payload: {} }) } }).getContent());
+    assert.equal(res.success, false);
+    assert.match(res.error, /Acesso negado/);
+  }
+
+  // Mesmo com todos 6 endpoints retornando 500 e 2 falhas consecutivas -> portal e status renderizam normalmente
+  setUserEmail('lukaslaurino@gmail.com');
+  const originalCfg = JSON.stringify(ctx.getConfig());
+  ctx.apiRunManualMonitoringCheck();
+  ctx.apiRunManualMonitoringCheck();
+  assert.equal(JSON.stringify(ctx.getConfig()), originalCfg, 'Monitoramento nunca deve alterar CONFIG_LINKS');
+
+  setUserEmail('');
+  const portalOut = ctx.doGet({ parameter: { view: 'portal' } });
+  const portalHtml = portalOut.getContent();
+  assert.ok(portalHtml.includes('view-status'));
+  assert.ok(portalHtml.includes('data-view="status"'));
+  assert.equal(/\bOnline\b/i.test(portalHtml), false);
+
+  const statusJson = JSON.parse(ctx.doGet({ parameter: { action: 'status' } }).getContent());
+  assert.equal(statusJson.success, true);
+  assert.equal(statusJson.monitoring.summary.unavailable, 6);
+  assert.equal(statusJson.monitoring.summary.activeIncidents, 6);
+
+  // Admin HTML inclui aba Monitoramento
+  setUserEmail('lukaslaurinocppa@gmail.com');
+  const adminHtml = ctx.doGet({ parameter: { view: 'admin' } }).getContent();
+  assert.ok(adminHtml.includes('data-tab="monitoramento"'));
+  assert.ok(adminHtml.includes('tab-monitoramento'));
+  assert.equal(adminHtml.includes('PORTAL_WEBHOOK_SECRET'), false);
+});
+
+test('Cliente Portal 2.1: painel Status, amostra insuficiente, disponibilidade observada e lacunas explícitas', () => {
+  const { ctx } = createGasContext({ userEmail: 'lukaslaurino@gmail.com' });
+  const portalHtml = ctx.doGet({ parameter: { view: 'portal' } }).getContent();
+  const harness = createDomHarness(portalHtml);
+
+  for (const suffix of ['cppa-oficial', 'pepoa-oficial', 'madre-oficial', 'cppa-audit', 'pepoa-audit', 'madre-audit']) {
+    harness.elements[`mon-status-${suffix}`] = { className: '', innerHTML: '', textContent: '' };
+    harness.elements[`mon-check-${suffix}`] = { className: '', innerHTML: '', textContent: '' };
+  }
+  for (const extra of [
+    'navCountStatus', 'activeIncidentsBanner', 'activeIncidentsBannerText',
+    'statusKpiMonitored', 'statusKpiMonitoredSub', 'statusKpiAccessible',
+    'statusKpiAttention', 'statusKpiAttentionSub', 'statusKpiIncidents',
+    'statusKpiNonVerifiable', 'statusKpiNonVerifiableSub', 'statusKpiLastRun', 'statusKpiLastRunSub',
+    'statusEnvTableContainer', 'statusFilterSummary', 'statusAvailabilityContainer',
+    'statusTimelineContainer', 'statusSvgChartContainer', 'statusIncidentsContainer', 'statusMaintenancesContainer',
+    'filterStatusUnit', 'filterStatusEnv', 'filterStatusPeriod'
+  ]) {
+    harness.elements[extra] = {
+      id: extra, value: extra === 'filterStatusPeriod' ? '24h' : (extra === 'filterStatusUnit' ? 'TODAS' : 'TODOS'),
+      textContent: '', innerHTML: '', className: '',
+      classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+      addEventListener() {}
+    };
+  }
+
+  // Simular 2 amostras apenas para cppaOficial (abaixo do mínimo 4 -> Amostra insuficiente) e 4 para pepoaAudit
+  const now = Date.now();
+  ctx.runScheduledMonitoringCheck();
+  ctx.runScheduledMonitoringCheck();
+
+  const boot = ctx.apiGetPublicBootstrap();
+  // Injetar 2 amostras extras em memória no mock de bootstrap apenas para validar o cálculo >= 4 vs < 4 no cliente
+  boot.monitoring.samples.push(
+    { t: new Date(now - 600000).toISOString(), e: 'pepoaAudit', s: 'ACESSIVEL', r: 'ACESSIVEL', d: 210, c: 200, k: 'HTTP_200_OK', m: 0 },
+    { t: new Date(now - 1200000).toISOString(), e: 'pepoaAudit', s: 'ACESSIVEL', r: 'ACESSIVEL', d: 240, c: 200, k: 'HTTP_200_OK', m: 0 }
+  );
+
+  harness.run({
+    withSuccessHandler(fn) {
+      return {
+        withFailureHandler() {
+          return {
+            apiGetPublicBootstrap() { fn(boot); }
+          };
+        }
+      };
+    }
+  });
+
+  assert.ok(harness.elements['mon-status-cppa-oficial'].innerHTML.includes('Acessível (HTTP)'));
+  assert.ok(harness.elements.statusAvailabilityContainer.innerHTML.includes('Amostra insuficiente (2/4 verificáveis)'));
+  assert.ok(harness.elements.statusAvailabilityContainer.innerHTML.includes('100% HTTP acessível'));
+  assert.ok(harness.elements.statusTimelineContainer.innerHTML.includes('lacunas'));
+  assert.ok(harness.elements.statusSvgChartContainer.innerHTML.includes('<svg'));
 });
