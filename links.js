@@ -7,7 +7,7 @@
  */
 const SISFAR_CONFIG = {
   // Endpoint da API de Configuração Persistente (Google Apps Script)
-  apiEndpoint: "https://script.google.com/macros/s/AKfycbzf-5xtSSGcePrWfxCeuDZ3zilUzt3NkVt8LR1uNvtuLdwTzpFWeqEKVbmFMwRYDogRuQ/exec",
+  apiEndpoint: "https://script.google.com/macros/s/AKfycbzKRSk7evTLpYUmktyE94Cs54w-F9NtJzo00HmeBSwgxG-C-gPxSNVflz1dX7sbuVg4/exec",
 
   // Configuração Padrão dos 6 Ambientes
   ambientes: {
