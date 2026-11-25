@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISFAR — Central Administrativa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('sisfar_portal_theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root {
+      --bg-main: #F4F7F9;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F8FAFC;
+      --bg-hover: #F1F5F9;
+      --border-color: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --text-primary: #0F172A;
+      --text-secondary: #64748B;
+      --accent-primary: #0F766E;
+      --accent-primary-hover: #115E59;
+      --accent-primary-soft: rgba(15, 118, 110, 0.10);
+      --accent-secondary: #0369A1;
+      --accent-secondary-soft: rgba(3, 105, 161, 0.10);
+      --oficial-color: #059669;
+      --oficial-soft: rgba(5, 150, 105, 0.10);
+      --audit-color: #D97706;
+      --audit-soft: rgba(217, 119, 6, 0.10);
+      --danger-color: #DC2626;
+      --danger-soft: rgba(220, 38, 38, 0.10);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.06);
+      --transition-fast: 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    html[data-theme="dark"] {
+      --bg-main: #0B1220;
+      --bg-surface: #131E2D;
+      --bg-subtle: #182638;
+      --bg-hover: #1E3046;
+      --border-color: #263447;
+      --border-strong: #354963;
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --accent-primary: #14B8A6;
+      --accent-primary-hover: #0D9488;
+      --accent-primary-soft: rgba(20, 184, 166, 0.15);
+      --accent-secondary: #38BDF8;
+      --accent-secondary-soft: rgba(56, 189, 248, 0.15);
+      --oficial-color: #10B981;
+      --oficial-soft: rgba(16, 185, 129, 0.14);
+      --audit-color: #F59E0B;
+      --audit-soft: rgba(245, 158, 11, 0.14);
+      --danger-color: #F87171;
+      --danger-soft: rgba(248, 113, 113, 0.14);
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+      --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: 3rem;
+    }
+
+    .topbar {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .topbar-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-group { display: flex; align-items: center; gap: 0.85rem; }
+
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-mark svg { width: 22px; height: 22px; }
+    h1 { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .subtitle { font-size: 12px; color: var(--text-secondary); }
+    .subtitle strong { color: var(--accent-secondary); }
+
+    .top-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+    .container { max-width: 1320px; margin: 0 auto; padding: 1.35rem 1.5rem; }
+
+    .status-bar {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1.15rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      font-size: 13px;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .status-left { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--oficial-color); display: inline-block; }
+
+    .admin-tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 1.25rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0.55rem 0.95rem;
+      border-radius: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    .tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .tab-btn.active { background: var(--accent-primary); color: #FFFFFF; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .card-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .card-head h2 { font-size: 15px; font-weight: 700; }
+    .muted { font-size: 12px; color: var(--text-secondary); }
+
+    .env-form-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .env-form-card.oficial { border-left: 3px solid var(--oficial-color); }
+    .env-form-card.audit { border-left: 3px solid var(--audit-color); }
+
+    .env-form-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .env-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.8rem;
+      align-items: end;
+    }
+
+    .form-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .form-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .col-span-2 { grid-column: span 2; }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+    }
+
+    input, select, textarea {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent-primary-soft);
+      border-color: var(--accent-primary);
+    }
+
+    textarea { min-height: 78px; resize: vertical; }
+
+    .btn {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.95rem;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-primary { background: var(--accent-primary); color: #FFFFFF; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-primary-hover); }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--border-color); }
+    .btn-secondary:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--border-strong); }
+    .btn-danger { background: var(--danger-soft); color: var(--danger-color); border-color: rgba(220, 38, 38, 0.25); }
+    .btn-danger:hover:not(:disabled) { background: rgba(220, 38, 38, 0.18); }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .toolbar-group { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+    .rel-state-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+
+    .rel-env-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+
+    .pill-oficial { background: var(--oficial-soft); color: var(--oficial-color); }
+    .pill-audit { background: var(--audit-soft); color: var(--audit-color); }
+    .pill-neutral { background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-secondary); }
+    .pill-danger { background: var(--danger-soft); color: var(--danger-color); }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+
+    .login-gate {
+      max-width: 460px;
+      margin: 3rem auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .login-gate h2 { font-size: 16px; margin-bottom: 0.45rem; }
+    .login-gate p { font-size: 13px; color: var(--text-secondary); margin-bottom: 1.15rem; }
+
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.85rem 1.2rem;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      z-index: 100;
+      max-width: 420px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #toast.success { background: #065F46; color: #ECFDF5; border: 1px solid #059669; }
+    #toast.error { background: #991B1B; color: #FEF2F2; border: 1px solid #DC2626; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(100, 116, 139, 0.3);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 980px) {
+      .form-grid, .rel-state-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner { padding: 0.75rem 1rem; }
+      .container { padding: 1rem; }
+      .form-grid, .form-grid-2, .form-grid-3, .rel-state-grid { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-group">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>
+        </div>
+        <div>
+          <h1>Central Administrativa — SISFAR 2.0</h1>
+          <p class="subtitle">Operador: <strong id="adminEmailLabel">__SISFAR_ADMIN_EMAIL__</strong></p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button type="button" id="btnHealthCheck" class="btn btn-secondary">Diagnóstico RPC</button>
+        <button type="button" id="btnThemeToggle" class="btn btn-secondary">Tema</button>
+        <a href="__SISFAR_PORTAL_URL__" class="btn btn-secondary">← Voltar ao Portal</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="loginGate" class="login-gate" style="display:none;">
+      <h2>Autenticação Administrativa</h2>
+      <p>Em execução pública sem identificação automática da Conta Google, informe um e-mail da allowlist e a chave administrativa configurada no servidor.</p>
+      <div class="form-group" style="margin-bottom:0.85rem;">
+        <label for="loginEmail">E-mail autorizado</label>
+        <input type="email" id="loginEmail" placeholder="admin@exemplo.com" autocomplete="username">
+      </div>
+      <div class="form-group" style="margin-bottom:1.1rem;">
+        <label for="loginPasscode">Chave administrativa</label>
+        <input type="password" id="loginPasscode" placeholder="Digite a chave administrativa" autocomplete="current-password">
+      </div>
+      <button type="button" id="btnAdminLogin" class="btn btn-primary" style="width:100%;">Entrar na Central Administrativa</button>
+    </div>
+
+    <div id="adminWorkspace" style="display:none;">
+      <div class="status-bar">
+        <div class="status-left">
+          <span class="status-dot"></span>
+          <span id="statusSummary"><strong>Sessão autenticada</strong></span>
+        </div>
+        <div id="lastUpdate" class="muted">Sincronizando...</div>
+      </div>
+
+      <div class="admin-tabs" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="ambientes">Ambientes</button>
+        <button type="button" class="tab-btn" data-tab="releases">Releases</button>
+        <button type="button" class="tab-btn" data-tab="comunicados">Comunicados</button>
+        <button type="button" class="tab-btn" data-tab="configuracoes">Configurações</button>
+      </div>
+
+      <!-- TAB 1: AMBIENTES -->
+      <section id="tab-ambientes" class="tab-panel active">
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Links Canônicos dos 6 Ambientes (CONFIG_LINKS)</h2>
+              <p class="muted">Preserva os 6 IDs canônicos. Eventos de release não sobrescrevem links personalizados aqui.</p>
+            </div>
+          </div>
+
+          <div id="groupOficial"></div>
+          <div id="groupAudit"></div>
+
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <button type="button" id="btnReset" class="btn btn-danger">Restaurar Padrões</button>
+              <button type="button" id="btnReload" class="btn btn-secondary">↻ Recarregar</button>
+            </div>
+            <button type="button" id="btnSave" class="btn btn-primary">Salvar Ambientes</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: RELEASES -->
+      <section id="tab-releases" class="tab-panel">
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Estado Atual e Homologação por Ambiente</h2>
+              <p class="muted" id="storageStatsLine">Armazenamento segmentado PropertiesService</p>
+            </div>
+          </div>
+          <div class="rel-state-grid" id="adminReleaseStateGrid"></div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Registrar Release ou Rollback Manual</h2>
+              <p class="muted">Audita e persiste no histórico segmentado sem sobrescrever CONFIG_LINKS.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="relUnit">Unidade</label>
+              <select id="relUnit">
+                <option value="CPPA">CPPA</option>
+                <option value="PEPOA">PEPOA</option>
+                <option value="MADRE">MADRE</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="relEnv">Ambiente</label>
+              <select id="relEnv">
+                <option value="OFICIAL">OFICIAL</option>
+                <option value="AUDIT">AUDIT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="relType">Tipo de Evento</label>
+              <select id="relType">
+                <option value="publish">publish (Publicação)</option>
+                <option value="rollback">rollback (Reversão)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="relHomolog">Homologação</label>
+              <select id="relHomolog">
+                <option value="PENDENTE">PENDENTE</option>
+                <option value="EM_HOMOLOGACAO">EM_HOMOLOGACAO</option>
+                <option value="HOMOLOGADO">HOMOLOGADO</option>
+                <option value="REJEITADO">REJEITADO</option>
+                <option value="REVERTIDO">REVERTIDO</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="relVersion">Versão Publicada</label>
+              <input type="text" id="relVersion" placeholder="4.38.9">
+            </div>
+            <div class="form-group">
+              <label for="relCommit">Commit Git</label>
+              <input type="text" id="relCommit" placeholder="2c6169b">
+            </div>
+            <div class="form-group">
+              <label for="relDepVersion">Versão Deployment (@)</label>
+              <input type="text" id="relDepVersion" placeholder="264">
+            </div>
+            <div class="form-group">
+              <label for="relDepId">Deployment ID</label>
+              <input type="text" id="relDepId" placeholder="AKfycb...">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="relUrl">URL do Web App (HTTPS)</label>
+              <input type="url" id="relUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="relNotes">Notas da Release / Motivo do Rollback</label>
+              <input type="text" id="relNotes" placeholder="Resumo da entrega ou motivo da reversão">
+            </div>
+          </div>
+          <div class="toolbar">
+            <span class="muted">Eventos mais antigos que o estado atual ficam apenas no histórico.</span>
+            <button type="button" id="btnRecordRelease" class="btn btn-primary">Registrar Evento</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <h2>Histórico Persistido</h2>
+          </div>
+          <div id="adminReleaseHistoryWrap"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: COMUNICADOS -->
+      <section id="tab-comunicados" class="tab-panel">
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2 id="annFormTitle">Novo Comunicado</h2>
+              <p class="muted">Exibido no portal público enquanto ativo e dentro da validade.</p>
+            </div>
+            <button type="button" id="btnResetAnnForm" class="btn btn-secondary">Limpar Formulário</button>
+          </div>
+
+          <input type="hidden" id="annId" value="">
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label for="annTitle">Título</label>
+              <input type="text" id="annTitle" maxlength="140" placeholder="Ex.: Janela de atualização programada">
+            </div>
+            <div class="form-group">
+              <label for="annCategory">Categoria</label>
+              <select id="annCategory">
+                <option value="Informativo">Informativo</option>
+                <option value="Atualização">Atualização</option>
+                <option value="Manutenção">Manutenção</option>
+                <option value="Operacional">Operacional</option>
+                <option value="Segurança">Segurança</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="annPriority">Prioridade</label>
+              <select id="annPriority">
+                <option value="Normal">Normal</option>
+                <option value="Alta">Alta</option>
+                <option value="Baixa">Baixa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="annUnit">Unidade</label>
+              <select id="annUnit">
+                <option value="TODAS">TODAS</option>
+                <option value="CPPA">CPPA</option>
+                <option value="PEPOA">PEPOA</option>
+                <option value="MADRE">MADRE</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="annValidity">Validade (opcional)</label>
+              <input type="date" id="annValidity">
+            </div>
+            <div class="form-group">
+              <label for="annActive">Status</label>
+              <select id="annActive">
+                <option value="true">Ativo</option>
+                <option value="false">Inativo</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="annDesc">Descrição</label>
+              <textarea id="annDesc" maxlength="800" placeholder="Detalhes objetivos do comunicado institucional..."></textarea>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <span></span>
+            <button type="button" id="btnSaveAnn" class="btn btn-primary">Salvar Comunicado</button>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-head">
+            <h2>Comunicados Cadastrados</h2>
+          </div>
+          <div id="adminAnnListWrap"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CONFIGURAÇÕES -->
+      <section id="tab-configuracoes" class="tab-panel">
+        <div class="card-box">
+          <div class="card-head">
+            <div>
+              <h2>Configurações Institucionais e Segurança</h2>
+              <p class="muted">Segredos HMAC e chaves de acesso são somente escrita (nunca retornados para o navegador).</p>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-bottom:1rem;">
+            <div class="form-group">
+              <label for="cfgTitle">Rótulo da Central</label>
+              <input type="text" id="cfgTitle" maxlength="80">
+            </div>
+            <div class="form-group">
+              <label for="cfgSubtitle">Subtítulo Institucional</label>
+              <input type="text" id="cfgSubtitle" maxlength="140">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="cfgObs">Observação Operacional no Portal (opcional)</label>
+              <input type="text" id="cfgObs" maxlength="300" placeholder="Aviso curto exibido no topo do portal quando preenchido">
+            </div>
+            <div class="form-group">
+              <label for="cfgMaxSegs">Segmentos Máximos de Histórico (2–10)</label>
+              <input type="number" id="cfgMaxSegs" min="2" max="10">
+            </div>
+            <div class="form-group">
+              <label for="cfgReplaySec">Janela Replay HMAC (60–900s)</label>
+              <input type="number" id="cfgReplaySec" min="60" max="900">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="cfgAdminEmails">Allowlist de E-mails Administradores (separados por vírgula)</label>
+              <input type="text" id="cfgAdminEmails">
+            </div>
+          </div>
+
+          <div class="env-form-card" style="margin-bottom:1rem;">
+            <div class="env-form-top">
+              <strong>Credenciais Privadas (PropertiesService)</strong>
+              <div style="display:flex;gap:0.4rem;flex-wrap:wrap;" id="secStatusBadges"></div>
+            </div>
+            <div class="form-grid form-grid-2">
+              <div class="form-group">
+                <label for="cfgNewWebhookSecret">Novo Segredo HMAC-SHA256 (mín. 16 chars, vazio mantém atual)</label>
+                <input type="password" id="cfgNewWebhookSecret" placeholder="Somente para definir/rotacionar" autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label for="cfgNewAdminPasscode">Nova Chave Administrativa Fallback (mín. 10 chars, vazio mantém atual)</label>
+                <input type="password" id="cfgNewAdminPasscode" placeholder="Para login quando Google omitir e-mail público" autocomplete="new-password">
+              </div>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <span></span>
+            <button type="button" id="btnSaveSettings" class="btn btn-primary">Salvar Configurações</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      var ADMIN_BOOT = /*__SISFAR_ADMIN_BOOT__*/null;
+      var authToken = '';
+      var bootstrapData = null;
+      var isBusy = false;
+      var toastTimer = null;
+
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function showToast(msg, type) {
+        var t = document.getElementById('toast');
+        if (!t) return;
+        clearTimeout(toastTimer);
+        t.textContent = msg;
+        t.className = type || 'success';
+        t.style.display = 'block';
+        toastTimer = setTimeout(function () { t.style.display = 'none'; }, 5000);
+      }
+
+      function formatDateTime(iso) {
+        if (!iso) return '—';
+        var ts = Date.parse(iso);
+        if (isNaN(ts)) return String(iso);
+        try {
+          return new Date(ts).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        } catch (e) {
+          return new Date(ts).toISOString();
+        }
+      }
+
+      function callServer(fnName, args, onSuccess, onError) {
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          if (onError) onError(new Error('google.script.run indisponível.'));
+          return;
+        }
+        var done = false;
+        var timer = setTimeout(function () {
+          if (!done) {
+            done = true;
+            if (onError) onError(new Error('Tempo limite de 15s excedido ao comunicar com o servidor.'));
+          }
+        }, 15000);
+
+        try {
+          var runner = google.script.run
+            .withSuccessHandler(function (res) {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              if (onSuccess) onSuccess(res);
+            })
+            .withFailureHandler(function (err) {
+              if (done) return;
+              done = true;
+              clearTimeout(timer);
+              if (onError) onError(err || new Error('Erro desconhecido no servidor.'));
+            });
+          runner[fnName].apply(runner, args || []);
+        } catch (err) {
+          if (!done) {
+            done = true;
+            clearTimeout(timer);
+            if (onError) onError(err);
+          }
+        }
+      }
+
+      function renderEnvironments(config) {
+        var go = document.getElementById('groupOficial');
+        var ga = document.getElementById('groupAudit');
+        if (!go || !ga || !config) return;
+        go.innerHTML = '';
+        ga.innerHTML = '';
+
+        var keys = Object.keys(config).sort(function (a, b) {
+          return (config[a].ordem || 0) - (config[b].ordem || 0);
+        });
+
+        keys.forEach(function (key) {
+          var item = config[key];
+          var isOf = item.tipo === 'oficial';
+          var card = document.createElement('div');
+          card.className = 'env-form-card ' + (isOf ? 'oficial' : 'audit');
+          card.innerHTML =
+            '<div class="env-form-top">' +
+              '<span class="env-tag">' + escapeHtml(item.id) + '</span>' +
+              '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding:0.35rem 0.7rem;font-size:12px;">Testar Link ↗</a>' +
+            '</div>' +
+            '<div class="form-grid">' +
+              '<div class="form-group">' +
+                '<label>Nome da Unidade / Ambiente</label>' +
+                '<input type="text" id="name_' + key + '" value="' + escapeHtml(item.nome || '') + '">' +
+              '</div>' +
+              '<div class="form-group col-span-2">' +
+                '<label>URL do Web App (HTTPS)</label>' +
+                '<input type="url" id="url_' + key + '" value="' + escapeHtml(item.url || '') + '">' +
+              '</div>' +
+              '<div class="form-group">' +
+                '<label>Status / Ordem</label>' +
+                '<div style="display:grid;grid-template-columns:2fr 1fr;gap:0.4rem;">' +
+                  '<select id="status_' + key + '">' +
+                    '<option value="true"' + (item.ativo !== false ? ' selected' : '') + '>Ativo</option>' +
+                    '<option value="false"' + (item.ativo === false ? ' selected' : '') + '>Inativo</option>' +
+                  '</select>' +
+                  '<input type="number" id="order_' + key + '" value="' + parseInt(item.ordem || 1, 10) + '" min="1" max="99">' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          if (isOf) go.appendChild(card);
+          else ga.appendChild(card);
+        });
+      }
+
+      function renderReleases(data) {
+        var grid = document.getElementById('adminReleaseStateGrid');
+        var histWrap = document.getElementById('adminReleaseHistoryWrap');
+        var statsLine = document.getElementById('storageStatsLine');
+        var envMap = (data.releaseState && data.releaseState.environments) || {};
+        var storage = data.releaseStorage || {};
+
+        if (statsLine) {
+          statsLine.textContent = 'Segmentos: ' + (storage.segmentsCount || 0) + ' · Uso total: ' + (storage.totalBytes || 0) + ' bytes · Eventos acumulados: ' + (storage.totalEverRecorded || 0);
+        }
+
+        if (grid) {
+          var keys = Object.keys(data.config || {});
+          grid.innerHTML = keys.map(function (key) {
+            var rel = envMap[key];
+            var isOf = key.indexOf('Oficial') !== -1;
+            var opts = ['PENDENTE', 'EM_HOMOLOGACAO', 'HOMOLOGADO', 'REJEITADO', 'REVERTIDO'].map(function (st) {
+              var sel = rel && rel.estadoHomologacao === st ? ' selected' : '';
+              return '<option value="' + st + '"' + sel + '>' + st + '</option>';
+            }).join('');
+
+            return '<div class="rel-env-card">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                '<strong>' + escapeHtml(key) + '</strong>' +
+                '<span class="pill ' + (isOf ? 'pill-oficial' : 'pill-audit') + '">' + (isOf ? 'OFICIAL' : 'AUDIT') + '</span>' +
+              '</div>' +
+              (rel
+                ? '<div class="muted">Versão: <strong>v' + escapeHtml(rel.versao) + '</strong> · @' + escapeHtml(String(rel.deploymentVersion).replace(/^@/, '')) + ' · <code>' + escapeHtml(rel.commit) + '</code></div>' +
+                  '<div class="muted">Publicado: ' + escapeHtml(formatDateTime(rel.publicadoEm)) + ' (' + escapeHtml(rel.tipoEvento) + ')</div>' +
+                  '<div style="display:flex;gap:0.4rem;margin-top:0.35rem;">' +
+                    '<select id="hom_' + key + '" style="flex:1;">' + opts + '</select>' +
+                    '<button type="button" class="btn btn-secondary btn-hom-save" data-env="' + key + '">Aplicar</button>' +
+                  '</div>'
+                : '<div class="muted">Nenhum evento registrado para este ambiente.</div>') +
+            '</div>';
+          }).join('');
+
+          var homBtns = grid.querySelectorAll('.btn-hom-save');
+          for (var i = 0; i < homBtns.length; i++) {
+            homBtns[i].addEventListener('click', function () {
+              var envKey = this.getAttribute('data-env');
+              var nextState = document.getElementById('hom_' + envKey).value;
+              callServer('apiUpdateAdminHomologation', [envKey, nextState, '', authToken], function (res) {
+                showToast(res.message || 'Homologação atualizada.', 'success');
+                loadBootstrap();
+              }, function (err) {
+                showToast(err.message, 'error');
+              });
+            });
+          }
+        }
+
+        if (histWrap) {
+          var hist = data.releaseHistory || [];
+          if (hist.length === 0) {
+            histWrap.innerHTML = '<p class="muted">Nenhum evento registrado no histórico segmentado.</p>';
+          } else {
+            var rows = hist.map(function (ev) {
+              return '<tr>' +
+                '<td>' + escapeHtml(formatDateTime(ev.publicadoEm)) + (ev.stale ? ' <span class="pill pill-audit">atrasado</span>' : '') + '</td>' +
+                '<td><strong>' + escapeHtml(ev.unidade) + '</strong> ' + escapeHtml(ev.ambiente) + '</td>' +
+                '<td>v' + escapeHtml(ev.versao) + ' (' + escapeHtml(ev.tipoEvento) + ')</td>' +
+                '<td><code>' + escapeHtml(ev.commit) + '</code> · @' + escapeHtml(String(ev.deploymentVersion).replace(/^@/, '')) + '</td>' +
+                '<td>' + escapeHtml(ev.estadoHomologacao) + '</td>' +
+                '<td>' + escapeHtml(ev.notas || '—') + '</td>' +
+              '</tr>';
+            }).join('');
+            histWrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Destino</th><th>Versão/Tipo</th><th>Commit/Deploy</th><th>Homologação</th><th>Notas</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+          }
+        }
+      }
+
+      function renderAnnouncementsAdmin(list) {
+        var wrap = document.getElementById('adminAnnListWrap');
+        if (!wrap) return;
+        if (!list || list.length === 0) {
+          wrap.innerHTML = '<p class="muted">Nenhum comunicado cadastrado.</p>';
+          return;
+        }
+        var rows = list.map(function (a) {
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(a.titulo) + '</strong><div class="muted">' + escapeHtml(a.descricao) + '</div></td>' +
+            '<td>' + escapeHtml(a.categoria) + ' · ' + escapeHtml(a.prioridade) + '</td>' +
+            '<td>' + escapeHtml(a.unidade) + '</td>' +
+            '<td>' + (a.validade ? escapeHtml(a.validade) : 'Sem validade') + '</td>' +
+            '<td><span class="pill ' + (a.ativo ? 'pill-oficial' : 'pill-danger') + '">' + (a.ativo ? 'Ativo' : 'Inativo') + '</span></td>' +
+            '<td style="white-space:nowrap;">' +
+              '<button type="button" class="btn btn-secondary btn-ann-edit" data-id="' + escapeHtml(a.id) + '" style="padding:0.3rem 0.55rem;font-size:12px;">Editar</button> ' +
+              '<button type="button" class="btn btn-danger btn-ann-del" data-id="' + escapeHtml(a.id) + '" style="padding:0.3rem 0.55rem;font-size:12px;">Excluir</button>' +
+            '</td>' +
+          '</tr>';
+        }).join('');
+        wrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Comunicado</th><th>Categoria/Prioridade</th><th>Unidade</th><th>Validade</th><th>Status</th><th>Ações</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+        var editBtns = wrap.querySelectorAll('.btn-ann-edit');
+        for (var i = 0; i < editBtns.length; i++) {
+          editBtns[i].addEventListener('click', function () {
+            var id = this.getAttribute('data-id');
+            var found = (bootstrapData.announcements || []).filter(function (x) { return x.id === id; })[0];
+            if (!found) return;
+            document.getElementById('annId').value = found.id;
+            document.getElementById('annTitle').value = found.titulo || '';
+            document.getElementById('annDesc').value = found.descricao || '';
+            document.getElementById('annCategory').value = found.categoria || 'Informativo';
+            document.getElementById('annPriority').value = found.prioridade || 'Normal';
+            document.getElementById('annUnit').value = found.unidade || 'TODAS';
+            document.getElementById('annValidity').value = found.validade || '';
+            document.getElementById('annActive').value = found.ativo === false ? 'false' : 'true';
+            document.getElementById('annFormTitle').textContent = 'Editar Comunicado';
+          });
+        }
+
+        var delBtns = wrap.querySelectorAll('.btn-ann-del');
+        for (var j = 0; j < delBtns.length; j++) {
+          delBtns[j].addEventListener('click', function () {
+            var id = this.getAttribute('data-id');
+            if (!confirm('Excluir este comunicado?')) return;
+            callServer('apiDeleteAdminAnnouncement', [id, authToken], function (res) {
+              showToast(res.message || 'Comunicado removido.', 'success');
+              loadBootstrap();
+            }, function (err) {
+              showToast(err.message, 'error');
+            });
+          });
+        }
+      }
+
+      function renderSettings(data) {
+        var s = data.settings || {};
+        var sec = data.securityStatus || {};
+        document.getElementById('cfgTitle').value = s.tituloCentral || 'Central de trabalho';
+        document.getElementById('cfgSubtitle').value = s.subtituloInstitucional || 'Sistema Integrado de Farmácia Prisional';
+        document.getElementById('cfgObs').value = s.observacaoOperacional || '';
+        document.getElementById('cfgMaxSegs').value = s.maxHistoricoSegmentos || 6;
+        document.getElementById('cfgReplaySec').value = s.janelaReplaySegundos || 300;
+        document.getElementById('cfgAdminEmails').value = (sec.adminEmails || []).join(', ');
+
+        var badges = document.getElementById('secStatusBadges');
+        if (badges) {
+          badges.innerHTML =
+            '<span class="pill ' + (sec.webhookSecretConfigured ? 'pill-oficial' : 'pill-danger') + '">HMAC Secret: ' + (sec.webhookSecretConfigured ? 'Configurado' : 'Pendente') + '</span>' +
+            '<span class="pill ' + (sec.adminPasscodeConfigured ? 'pill-oficial' : 'pill-neutral') + '">Chave Fallback: ' + (sec.adminPasscodeConfigured ? 'Configurada' : 'Opcional') + '</span>' +
+            '<span class="pill ' + (sec.googleEmailDetected ? 'pill-oficial' : 'pill-audit') + '">E-mail Google: ' + (sec.googleEmailDetected ? 'Detectado' : 'Omitido pelo runtime') + '</span>';
+        }
+      }
+
+      function loadBootstrap() {
+        if (isBusy) return;
+        isBusy = true;
+        document.getElementById('lastUpdate').innerHTML = '<span class="spinner"></span> Sincronizando...';
+
+        callServer('apiGetAdminBootstrap', [authToken], function (res) {
+          isBusy = false;
+          if (!res || !res.success) {
+            showToast('Resposta inválida do servidor.', 'error');
+            return;
+          }
+          bootstrapData = res;
+          document.getElementById('adminEmailLabel').textContent = res.user || 'Administrador';
+          document.getElementById('statusSummary').innerHTML = '<strong>Conectado:</strong> ' + escapeHtml(res.user) + ' (' + escapeHtml(res.authMethod) + ')';
+          document.getElementById('lastUpdate').textContent = 'Última atualização de links: ' + formatDateTime(res.updatedAt);
+
+          renderEnvironments(res.config);
+          renderReleases(res);
+          renderAnnouncementsAdmin(res.announcements);
+          renderSettings(res);
+        }, function (err) {
+          isBusy = false;
+          document.getElementById('lastUpdate').textContent = 'Erro: ' + err.message;
+          showToast('Erro ao sincronizar: ' + err.message, 'error');
+        });
+      }
+
+      function setupTabsAndTheme() {
+        var tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
+        for (var i = 0; i < tabBtns.length; i++) {
+          tabBtns[i].addEventListener('click', function () {
+            var target = this.getAttribute('data-tab');
+            var allBtns = document.querySelectorAll('.tab-btn[data-tab]');
+            var allPanels = document.querySelectorAll('.tab-panel');
+            for (var b = 0; b < allBtns.length; b++) {
+              allBtns[b].classList.toggle('active', allBtns[b].getAttribute('data-tab') === target);
+            }
+            for (var p = 0; p < allPanels.length; p++) {
+              allPanels[p].classList.toggle('active', allPanels[p].id === 'tab-' + target);
+            }
+          });
+        }
+
+        document.getElementById('btnThemeToggle').addEventListener('click', function () {
+          var root = document.documentElement;
+          var nextDark = root.getAttribute('data-theme') !== 'dark';
+          if (nextDark) root.setAttribute('data-theme', 'dark');
+          else root.removeAttribute('data-theme');
+          try { localStorage.setItem('sisfar_portal_theme', nextDark ? 'dark' : 'light'); } catch (e) {}
+        });
+
+        document.getElementById('btnHealthCheck').addEventListener('click', function () {
+          window.sisfarHealthCheck();
+        });
+      }
+
+      function setupActions() {
+        document.getElementById('btnReload').addEventListener('click', loadBootstrap);
+
+        document.getElementById('btnSave').addEventListener('click', function () {
+          if (!bootstrapData || !bootstrapData.config || isBusy) return;
+          var payload = {};
+          var keys = Object.keys(bootstrapData.config);
+          for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var nome = document.getElementById('name_' + key).value.trim();
+            var url = document.getElementById('url_' + key).value.trim();
+            var ativo = document.getElementById('status_' + key).value === 'true';
+            var ordem = parseInt(document.getElementById('order_' + key).value, 10);
+            if (!nome) { showToast('Nome obrigatório para ' + key, 'error'); return; }
+            if (url.indexOf('https://') !== 0) { showToast('URL deve iniciar com https:// em ' + key, 'error'); return; }
+            payload[key] = {
+              id: key,
+              nome: nome,
+              tipo: bootstrapData.config[key].tipo,
+              url: url,
+              ativo: ativo,
+              ordem: isNaN(ordem) || ordem < 1 ? 1 : ordem
+            };
+          }
+          callServer('apiSaveAdminConfig', [payload, authToken], function (res) {
+            showToast(res.message || 'Ambientes salvos.', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnReset').addEventListener('click', function () {
+          if (!confirm('Restaurar os 6 links padrões?')) return;
+          callServer('apiResetAdminConfig', [authToken], function (res) {
+            showToast(res.message || 'Padrões restaurados.', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnRecordRelease').addEventListener('click', function () {
+          var unit = document.getElementById('relUnit').value;
+          var env = document.getElementById('relEnv').value;
+          var envKey = unit.toLowerCase() + (env === 'OFICIAL' ? 'Oficial' : 'Audit');
+          var defaultUrl = bootstrapData && bootstrapData.config && bootstrapData.config[envKey] ? bootstrapData.config[envKey].url : '';
+          var urlVal = document.getElementById('relUrl').value.trim() || defaultUrl;
+
+          var eventPayload = {
+            schemaVersion: '2.0',
+            unidade: unit,
+            ambiente: env,
+            tipoEvento: document.getElementById('relType').value,
+            estadoHomologacao: document.getElementById('relHomolog').value,
+            versao: document.getElementById('relVersion').value.trim(),
+            commit: document.getElementById('relCommit').value.trim(),
+            deploymentVersion: document.getElementById('relDepVersion').value.trim(),
+            deploymentId: document.getElementById('relDepId').value.trim(),
+            url: urlVal,
+            notas: document.getElementById('relNotes').value.trim(),
+            publicadoEm: new Date().toISOString()
+          };
+
+          callServer('apiRecordAdminReleaseEvent', [eventPayload, authToken], function (res) {
+            showToast(res.message || 'Evento registrado.', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnResetAnnForm').addEventListener('click', function () {
+          document.getElementById('annId').value = '';
+          document.getElementById('annTitle').value = '';
+          document.getElementById('annDesc').value = '';
+          document.getElementById('annCategory').value = 'Informativo';
+          document.getElementById('annPriority').value = 'Normal';
+          document.getElementById('annUnit').value = 'TODAS';
+          document.getElementById('annValidity').value = '';
+          document.getElementById('annActive').value = 'true';
+          document.getElementById('annFormTitle').textContent = 'Novo Comunicado';
+        });
+
+        document.getElementById('btnSaveAnn').addEventListener('click', function () {
+          var payload = {
+            id: document.getElementById('annId').value.trim() || undefined,
+            titulo: document.getElementById('annTitle').value.trim(),
+            descricao: document.getElementById('annDesc').value.trim(),
+            categoria: document.getElementById('annCategory').value,
+            prioridade: document.getElementById('annPriority').value,
+            unidade: document.getElementById('annUnit').value,
+            validade: document.getElementById('annValidity').value,
+            ativo: document.getElementById('annActive').value === 'true'
+          };
+          callServer('apiSaveAdminAnnouncement', [payload, authToken], function (res) {
+            showToast(res.message || 'Comunicado salvo.', 'success');
+            document.getElementById('btnResetAnnForm').click();
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnSaveSettings').addEventListener('click', function () {
+          var emailsRaw = document.getElementById('cfgAdminEmails').value;
+          var adminEmails = emailsRaw.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+          var payload = {
+            tituloCentral: document.getElementById('cfgTitle').value.trim(),
+            subtituloInstitucional: document.getElementById('cfgSubtitle').value.trim(),
+            observacaoOperacional: document.getElementById('cfgObs').value.trim(),
+            maxHistoricoSegmentos: Number(document.getElementById('cfgMaxSegs').value),
+            janelaReplaySegundos: Number(document.getElementById('cfgReplaySec').value),
+            adminEmails: adminEmails,
+            newWebhookSecret: document.getElementById('cfgNewWebhookSecret').value.trim(),
+            newAdminPasscode: document.getElementById('cfgNewAdminPasscode').value.trim()
+          };
+          callServer('apiSaveAdminSettings', [payload, authToken], function (res) {
+            document.getElementById('cfgNewWebhookSecret').value = '';
+            document.getElementById('cfgNewAdminPasscode').value = '';
+            showToast(res.message || 'Configurações salvas.', 'success');
+            loadBootstrap();
+          }, function (err) {
+            showToast('Erro: ' + err.message, 'error');
+          });
+        });
+
+        document.getElementById('btnAdminLogin').addEventListener('click', function () {
+          var email = document.getElementById('loginEmail').value.trim();
+          var pass = document.getElementById('loginPasscode').value;
+          if (!email || !pass) {
+            showToast('Informe e-mail e chave administrativa.', 'error');
+            return;
+          }
+          callServer('apiAdminAuthenticate', [email, pass], function (res) {
+            if (res && res.success && res.authToken) {
+              authToken = res.authToken;
+              document.getElementById('loginPasscode').value = '';
+              document.getElementById('loginGate').style.display = 'none';
+              document.getElementById('adminWorkspace').style.display = 'block';
+              loadBootstrap();
+            } else {
+              showToast('Falha na autenticação.', 'error');
+            }
+          }, function (err) {
+            showToast('Acesso negado: ' + err.message, 'error');
+          });
+        });
+      }
+
+      window.sisfarHealthCheck = function () {
+        var start = Date.now();
+        callServer('apiHealthCheck', [authToken], function (res) {
+          var ms = Date.now() - start;
+          showToast('Health Check OK (' + ms + 'ms): ' + res.user, 'success');
+        }, function (err) {
+          showToast('Health Check FALHOU: ' + err.message, 'error');
+        });
+      };
+
+      setupTabsAndTheme();
+      setupActions();
+
+      if (ADMIN_BOOT && ADMIN_BOOT.requirePasscodeLogin) {
+        document.getElementById('loginGate').style.display = 'block';
+        document.getElementById('adminWorkspace').style.display = 'none';
+      } else {
+        document.getElementById('loginGate').style.display = 'none';
+        document.getElementById('adminWorkspace').style.display = 'block';
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', loadBootstrap);
+        } else {
+          loadBootstrap();
+        }
+      }
+    })();
+  </script>
+</body>
+</html>

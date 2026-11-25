@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISFAR — Sistema Integrado de Farmácia Prisional</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('sisfar_portal_theme');
+        if (saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    :root {
+      --bg-main: #F4F7F9;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F8FAFC;
+      --bg-hover: #F1F5F9;
+      --border-color: #E2E8F0;
+      --border-strong: #CBD5E1;
+
+      --text-primary: #0F172A;
+      --text-secondary: #64748B;
+      --text-tertiary: #475569;
+
+      --accent-primary: #0F766E;
+      --accent-primary-hover: #115E59;
+      --accent-primary-soft: rgba(15, 118, 110, 0.09);
+
+      --accent-secondary: #0369A1;
+      --accent-secondary-soft: rgba(3, 105, 161, 0.09);
+
+      --oficial-color: #059669;
+      --oficial-hover: #047857;
+      --oficial-soft: rgba(5, 150, 105, 0.10);
+      --oficial-border: rgba(5, 150, 105, 0.28);
+
+      --audit-color: #D97706;
+      --audit-hover: #B45309;
+      --audit-soft: rgba(217, 119, 6, 0.10);
+      --audit-border: rgba(217, 119, 6, 0.30);
+
+      --danger-color: #DC2626;
+      --danger-soft: rgba(220, 38, 38, 0.09);
+      --danger-border: rgba(220, 38, 38, 0.26);
+
+      --neutral-soft: #F1F5F9;
+      --neutral-text: #475569;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+      --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08);
+      --transition-fast: 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    html[data-theme="dark"] {
+      --bg-main: #0B1220;
+      --bg-surface: #131E2D;
+      --bg-subtle: #182638;
+      --bg-hover: #1D2D42;
+      --border-color: #263447;
+      --border-strong: #33465E;
+
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-tertiary: #CBD5E1;
+
+      --accent-primary: #14B8A6;
+      --accent-primary-hover: #0D9488;
+      --accent-primary-soft: rgba(20, 184, 166, 0.14);
+
+      --accent-secondary: #38BDF8;
+      --accent-secondary-soft: rgba(56, 189, 248, 0.14);
+
+      --oficial-color: #10B981;
+      --oficial-hover: #059669;
+      --oficial-soft: rgba(16, 185, 129, 0.14);
+      --oficial-border: rgba(16, 185, 129, 0.34);
+
+      --audit-color: #F59E0B;
+      --audit-hover: #D97706;
+      --audit-soft: rgba(245, 158, 11, 0.14);
+      --audit-border: rgba(245, 158, 11, 0.34);
+
+      --danger-color: #F87171;
+      --danger-soft: rgba(248, 113, 113, 0.14);
+      --danger-border: rgba(248, 113, 113, 0.32);
+
+      --neutral-soft: #1B2A3E;
+      --neutral-text: #94A3B8;
+
+      --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.30);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.40);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    a { color: inherit; }
+
+    .topbar {
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .topbar-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-area {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: #FFFFFF;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .brand-logo svg { width: 22px; height: 22px; }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .brand-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .brand-pill {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-primary);
+      background: var(--accent-primary-soft);
+      border: 1px solid rgba(15, 118, 110, 0.22);
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-area {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .nav-tabs {
+      display: inline-flex;
+      align-items: center;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .nav-btn {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0.45rem 0.8rem;
+      border-radius: 7px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: background-color var(--transition-fast), color var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-primary);
+      background: var(--bg-hover);
+    }
+
+    .nav-btn.active {
+      background: var(--bg-surface);
+      color: var(--accent-primary);
+      box-shadow: var(--shadow-xs);
+    }
+
+    .nav-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .nav-count {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: var(--neutral-soft);
+      color: var(--text-tertiary);
+    }
+
+    .nav-btn.active .nav-count {
+      background: var(--accent-primary-soft);
+      color: var(--accent-primary);
+    }
+
+    .btn-admin-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color var(--transition-fast), background-color var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .btn-admin-link:hover {
+      border-color: var(--accent-secondary);
+      color: var(--accent-secondary);
+      background: var(--bg-subtle);
+    }
+
+    .btn-admin-link svg { width: 15px; height: 15px; }
+
+    .theme-btn {
+      appearance: none;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
+      padding: 0.5rem 0.7rem;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: border-color var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+    }
+
+    .theme-btn:hover {
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+      background: var(--bg-subtle);
+    }
+
+    .theme-btn svg { width: 15px; height: 15px; }
+
+    .main-container {
+      width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 1.5rem 1.5rem 2.75rem;
+      flex: 1;
+    }
+
+    .hero-strip {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.15rem 1.35rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .hero-copy h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .hero-copy p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .date-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent-secondary);
+      background: var(--accent-secondary-soft);
+      border: 1px solid rgba(3, 105, 161, 0.22);
+      padding: 0.35rem 0.7rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .date-chip svg { width: 14px; height: 14px; }
+
+    .obs-banner {
+      background: var(--accent-secondary-soft);
+      border: 1px solid rgba(3, 105, 161, 0.25);
+      color: var(--text-primary);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .obs-banner.visible { display: flex; }
+    .obs-banner svg { width: 16px; height: 16px; color: var(--accent-secondary); flex-shrink: 0; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.95rem 1.1rem;
+      box-shadow: var(--shadow-xs);
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+    }
+
+    .kpi-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 0.3rem;
+      word-break: break-word;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .section-head h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-head h2 svg { width: 17px; height: 17px; color: var(--accent-primary); }
+
+    .section-note {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .units-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .unit-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .unit-card:hover {
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-md);
+    }
+
+    .unit-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .unit-code-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .unit-code {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .unit-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-secondary);
+      background: var(--accent-secondary-soft);
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+    }
+
+    .unit-fullname {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
+    }
+
+    .env-slot {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+
+    .env-slot.oficial { border-left: 3px solid var(--oficial-color); }
+    .env-slot.audit { border-left: 3px solid var(--audit-color); }
+
+    .env-slot-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .env-kind {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .env-kind.oficial { color: var(--oficial-color); }
+    .env-kind.audit { color: var(--audit-color); }
+
+    .badge-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-status.oficial {
+      background: var(--oficial-soft);
+      color: var(--oficial-color);
+      border-color: var(--oficial-border);
+    }
+
+    .badge-status.audit {
+      background: var(--audit-soft);
+      color: var(--audit-color);
+      border-color: var(--audit-border);
+    }
+
+    .badge-status.inactive {
+      background: var(--danger-soft);
+      color: var(--danger-color);
+      border-color: var(--danger-border);
+    }
+
+    .env-slot-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+    }
+
+    .env-telemetry {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem 0.65rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 0.55rem 0.65rem;
+      font-size: 11px;
+    }
+
+    .tel-item { min-width: 0; }
+    .tel-label { color: var(--text-secondary); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .tel-val { color: var(--text-primary); font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tel-val.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      color: #FFFFFF;
+      transition: background-color var(--transition-fast), opacity var(--transition-fast);
+    }
+
+    .btn-action svg { width: 14px; height: 14px; flex-shrink: 0; }
+    .btn-action.oficial { background: var(--oficial-color); }
+    .btn-action.oficial:hover { background: var(--oficial-hover); }
+    .btn-action.audit { background: var(--audit-color); }
+    .btn-action.audit:hover { background: var(--audit-hover); }
+    .btn-action.disabled {
+      background: var(--neutral-soft);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-xs);
+      margin-bottom: 1.25rem;
+    }
+
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    .filters-bar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      align-items: end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+    }
+
+    .filter-control {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.7rem;
+      font-family: inherit;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .filter-control:focus {
+      outline: 2px solid var(--accent-primary-soft);
+      border-color: var(--accent-primary);
+    }
+
+    .btn-ghost {
+      appearance: none;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.85rem;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .btn-ghost:hover { background: var(--bg-hover); }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .matrix-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+    }
+
+    .matrix-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 0.55rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stage-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0;
+      border-top: 1px dashed var(--border-color);
+      font-size: 12px;
+    }
+
+    .stage-row:first-of-type { border-top: none; }
+    .stage-key { color: var(--text-secondary); font-size: 11px; }
+    .stage-val { font-weight: 600; color: var(--text-primary); text-align: right; }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.75rem 0.85rem;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
+      color: var(--text-primary);
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .tag-pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .tag-oficial { background: var(--oficial-soft); color: var(--oficial-color); }
+    .tag-audit { background: var(--audit-soft); color: var(--audit-color); }
+    .tag-publish { background: var(--accent-secondary-soft); color: var(--accent-secondary); }
+    .tag-rollback { background: var(--danger-soft); color: var(--danger-color); }
+    .tag-homologado { background: var(--oficial-soft); color: var(--oficial-color); }
+    .tag-pendente { background: var(--neutral-soft); color: var(--neutral-text); }
+    .tag-stale { background: var(--audit-soft); color: var(--audit-color); margin-top: 0.25rem; }
+
+    .announcements-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .ann-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .ann-card.prio-alta { border-left: 3px solid var(--danger-color); }
+    .ann-card.prio-normal { border-left: 3px solid var(--accent-secondary); }
+    .ann-card.prio-baixa { border-left: 3px solid var(--border-strong); }
+
+    .ann-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .ann-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .ann-desc {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .ann-foot {
+      font-size: 11px;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.25rem 1.25rem;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      background: var(--bg-subtle);
+    }
+
+    .empty-state strong {
+      display: block;
+      color: var(--text-primary);
+      font-size: 14px;
+      margin-bottom: 0.25rem;
+    }
+
+    .empty-state p { font-size: 13px; }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      padding: 1.15rem 1.5rem;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .footer-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 1180px) {
+      .units-grid, .matrix-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 768px) {
+      .topbar-inner { padding: 0.75rem 1rem; }
+      .main-container { padding: 1rem 1rem 2rem; }
+      .units-grid, .matrix-grid, .kpi-grid, .filters-bar { grid-template-columns: 1fr; }
+      .nav-area { width: 100%; justify-content: space-between; }
+      .nav-tabs { width: 100%; overflow-x: auto; }
+    }
+
+    @media (max-width: 420px) {
+      .env-telemetry { grid-template-columns: 1fr; }
+      .nav-btn { padding: 0.42rem 0.6rem; font-size: 12px; }
+      .btn-admin-link, .theme-btn { font-size: 12px; padding: 0.42rem 0.65rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-area">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12h6"/>
+            <path d="M12 9v6"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <span class="brand-name">SISFAR</span>
+            <span class="brand-pill" id="centralTitleBadge">Central de trabalho</span>
+          </div>
+          <span class="brand-sub" id="centralSubtitle">Sistema Integrado de Farmácia Prisional</span>
+        </div>
+      </div>
+
+      <nav class="nav-area" aria-label="Navegação principal">
+        <div class="nav-tabs" role="tablist">
+          <button type="button" class="nav-btn active" data-view="inicio" role="tab" aria-selected="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Início</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="atualizacoes" role="tab" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            <span>Atualizações</span>
+            <span class="nav-count" id="navCountReleases">0</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="comunicados" role="tab" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span>Comunicados</span>
+            <span class="nav-count" id="navCountAnnouncements">0</span>
+          </button>
+        </div>
+
+        <a id="btnAdminPortal" href="__SISFAR_ADMIN_URL__" class="btn-admin-link" title="Acessar Administração">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Administração</span>
+        </a>
+
+        <button type="button" id="btnThemeToggle" class="theme-btn" aria-label="Alternar tema claro ou escuro">
+          <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span id="themeLabel">Escuro</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <section class="hero-strip">
+      <div class="hero-copy">
+        <h1>Central Institucional Integrada — SISFAR</h1>
+        <p>Acesso às unidades prisionais (OFICIAL e AUDIT), histórico auditável de versões e comunicados operacionais.</p>
+      </div>
+      <div class="hero-meta">
+        <span class="date-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="currentDatePtBr">—</span>
+        </span>
+      </div>
+    </section>
+
+    <div class="obs-banner" id="obsBanner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span id="obsBannerText"></span>
+    </div>
+
+    <section class="kpi-grid" aria-label="Indicadores reais do portal">
+      <div class="kpi-card">
+        <div class="kpi-label">Ambientes Ativos</div>
+        <div class="kpi-value" id="kpiActiveEnvs">—</div>
+        <div class="kpi-sub" id="kpiActiveEnvsSub">Base CONFIG_LINKS</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Eventos de Release</div>
+        <div class="kpi-value" id="kpiReleaseCount">0</div>
+        <div class="kpi-sub" id="kpiReleaseSub">Histórico persistido</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Comunicados Vigentes</div>
+        <div class="kpi-value" id="kpiAnnCount">0</div>
+        <div class="kpi-sub" id="kpiAnnSub">Ativos dentro da validade</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Último Evento Registrado</div>
+        <div class="kpi-value" id="kpiLastRelease">Sem registro</div>
+        <div class="kpi-sub" id="kpiLastReleaseSub">Aguardando evento confirmado</div>
+      </div>
+    </section>
+
+    <!-- VIEW: INÍCIO -->
+    <section id="view-inicio" class="view-panel active">
+      <div class="section-head">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Unidades e Ambientes (OFICIAL / AUDIT)
+        </h2>
+        <span class="section-note">Links persistidos em CONFIG_LINKS; versões e estados refletem apenas eventos confirmados.</span>
+      </div>
+
+      <div class="units-grid" id="unitsGrid">
+        <!-- CARD CPPA -->
+        <article class="unit-card" id="unit-card-CPPA">
+          <div class="unit-card-head">
+            <div>
+              <div class="unit-code-wrap">
+                <span class="unit-code">CPPA</span>
+                <span class="unit-tag">Unidade 1</span>
+              </div>
+              <p class="unit-fullname" id="unit-fullname-CPPA">Cadeia Pública de Porto Alegre</p>
+            </div>
+          </div>
+
+          <div class="env-slot oficial" id="card-cppa-oficial">
+            <div class="env-slot-top">
+              <span class="env-kind oficial">OFICIAL · Produção</span>
+              <span class="badge-status oficial" id="badge-cppa-oficial">Oficial</span>
+            </div>
+            <p class="env-slot-name" id="name-cppa-oficial">CPPA — Cadeia Pública de Porto Alegre</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-cppa-oficial">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-cppa-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-cppa-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-cppa-oficial">Sem registro</span></div>
+            </div>
+            <a id="link-cppa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+              <span id="label-cppa-oficial">Acessar Ambiente Oficial</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+
+          <div class="env-slot audit" id="card-cppa-audit">
+            <div class="env-slot-top">
+              <span class="env-kind audit">AUDIT · Homologação</span>
+              <span class="badge-status audit" id="badge-cppa-audit">AUDIT</span>
+            </div>
+            <p class="env-slot-name" id="name-cppa-audit">CPPA — Cadeia Pública de Porto Alegre</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-cppa-audit">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-cppa-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-cppa-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-cppa-audit">Sem registro</span></div>
+            </div>
+            <a id="link-cppa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+              <span id="label-cppa-audit">Acessar Homologação</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <!-- CARD PEPOA -->
+        <article class="unit-card" id="unit-card-PEPOA">
+          <div class="unit-card-head">
+            <div>
+              <div class="unit-code-wrap">
+                <span class="unit-code">PEPOA</span>
+                <span class="unit-tag">Unidade 2</span>
+              </div>
+              <p class="unit-fullname" id="unit-fullname-PEPOA">Penitenciária Estadual de Porto Alegre</p>
+            </div>
+          </div>
+
+          <div class="env-slot oficial" id="card-pepoa-oficial">
+            <div class="env-slot-top">
+              <span class="env-kind oficial">OFICIAL · Produção</span>
+              <span class="badge-status oficial" id="badge-pepoa-oficial">Oficial</span>
+            </div>
+            <p class="env-slot-name" id="name-pepoa-oficial">PEPOA — Penitenciária Estadual de Porto Alegre</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-pepoa-oficial">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-pepoa-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-pepoa-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-pepoa-oficial">Sem registro</span></div>
+            </div>
+            <a id="link-pepoa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+              <span id="label-pepoa-oficial">Acessar Ambiente Oficial</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+
+          <div class="env-slot audit" id="card-pepoa-audit">
+            <div class="env-slot-top">
+              <span class="env-kind audit">AUDIT · Homologação</span>
+              <span class="badge-status audit" id="badge-pepoa-audit">AUDIT</span>
+            </div>
+            <p class="env-slot-name" id="name-pepoa-audit">PEPOA — Penitenciária Estadual de Porto Alegre</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-pepoa-audit">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-pepoa-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-pepoa-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-pepoa-audit">Sem registro</span></div>
+            </div>
+            <a id="link-pepoa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+              <span id="label-pepoa-audit">Acessar Homologação</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+        </article>
+
+        <!-- CARD MADRE -->
+        <article class="unit-card" id="unit-card-MADRE">
+          <div class="unit-card-head">
+            <div>
+              <div class="unit-code-wrap">
+                <span class="unit-code">MADRE</span>
+                <span class="unit-tag">Unidade 3</span>
+              </div>
+              <p class="unit-fullname" id="unit-fullname-MADRE">Presídio Estadual Feminino Madre Pelletier</p>
+            </div>
+          </div>
+
+          <div class="env-slot oficial" id="card-madre-oficial">
+            <div class="env-slot-top">
+              <span class="env-kind oficial">OFICIAL · Produção</span>
+              <span class="badge-status oficial" id="badge-madre-oficial">Oficial</span>
+            </div>
+            <p class="env-slot-name" id="name-madre-oficial">MADRE — Presídio Estadual Feminino Madre Pelletier</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-madre-oficial">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-madre-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-madre-oficial">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-madre-oficial">Sem registro</span></div>
+            </div>
+            <a id="link-madre-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+              <span id="label-madre-oficial">Acessar Ambiente Oficial</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+
+          <div class="env-slot audit" id="card-madre-audit">
+            <div class="env-slot-top">
+              <span class="env-kind audit">AUDIT · Homologação</span>
+              <span class="badge-status audit" id="badge-madre-audit">AUDIT</span>
+            </div>
+            <p class="env-slot-name" id="name-madre-audit">MADRE — Presídio Estadual Feminino Madre Pelletier</p>
+            <div class="env-telemetry">
+              <div class="tel-item"><span class="tel-label">Versão</span><span class="tel-val" id="ver-madre-audit">Sem evento</span></div>
+              <div class="tel-item"><span class="tel-label">Deploy / Commit</span><span class="tel-val mono" id="dep-madre-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Publicado em</span><span class="tel-val" id="date-madre-audit">—</span></div>
+              <div class="tel-item"><span class="tel-label">Homologação</span><span class="tel-val" id="state-madre-audit">Sem registro</span></div>
+            </div>
+            <a id="link-madre-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+              <span id="label-madre-audit">Acessar Homologação</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- VIEW: ATUALIZAÇÕES -->
+    <section id="view-atualizacoes" class="view-panel">
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Estágios por Ambiente (Git / Candidato / Publicado / Homologado)
+          </h2>
+          <span class="section-note">Estado efetivo isolado por unidade e ambiente.</span>
+        </div>
+        <div class="matrix-grid" id="stageMatrixGrid"></div>
+      </div>
+
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Histórico de Releases e Rollbacks
+          </h2>
+          <span class="section-note" id="releasesFilterSummary">0 registros</span>
+        </div>
+
+        <div class="filters-bar">
+          <div class="filter-group">
+            <label for="filterRelUnit">Unidade</label>
+            <select id="filterRelUnit" class="filter-control">
+              <option value="TODAS">Todas</option>
+              <option value="CPPA">CPPA</option>
+              <option value="PEPOA">PEPOA</option>
+              <option value="MADRE">MADRE</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterRelEnv">Ambiente</label>
+            <select id="filterRelEnv" class="filter-control">
+              <option value="TODOS">Todos</option>
+              <option value="OFICIAL">OFICIAL</option>
+              <option value="AUDIT">AUDIT</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterRelVersion">Versão</label>
+            <input type="text" id="filterRelVersion" class="filter-control" placeholder="Ex.: 4.38.9">
+          </div>
+          <div class="filter-group">
+            <button type="button" id="btnClearReleaseFilters" class="btn-ghost">Limpar filtros</button>
+          </div>
+        </div>
+
+        <div id="releasesHistoryContainer"></div>
+      </div>
+    </section>
+
+    <!-- VIEW: COMUNICADOS -->
+    <section id="view-comunicados" class="view-panel">
+      <div class="panel-card">
+        <div class="section-head">
+          <h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Comunicados Institucionais
+          </h2>
+          <span class="section-note" id="annSummaryNote">Avisos vigentes e administráveis na Central Administrativa</span>
+        </div>
+
+        <div class="filters-bar" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+          <div class="filter-group">
+            <label for="filterAnnUnit">Unidade</label>
+            <select id="filterAnnUnit" class="filter-control">
+              <option value="TODAS">Todas</option>
+              <option value="CPPA">CPPA</option>
+              <option value="PEPOA">PEPOA</option>
+              <option value="MADRE">MADRE</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="filterAnnCat">Categoria</label>
+            <select id="filterAnnCat" class="filter-control">
+              <option value="TODAS">Todas</option>
+              <option value="Manutenção">Manutenção</option>
+              <option value="Atualização">Atualização</option>
+              <option value="Operacional">Operacional</option>
+              <option value="Segurança">Segurança</option>
+              <option value="Informativo">Informativo</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <button type="button" id="btnClearAnnFilters" class="btn-ghost">Limpar filtros</button>
+          </div>
+        </div>
+
+        <div id="announcementsContainer"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span><strong>SISFAR</strong> — Sistema Integrado de Farmácia Prisional</span>
+      <span>Portal institucional sem consultas clínicas · Sincronização por eventos auditáveis</span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var INITIAL_PORTAL_DATA = /*__SISFAR_INITIAL_DATA__*/null;
+
+      var MAP = {
+        cppaOficial:  { unit: 'CPPA',  card: 'card-cppa-oficial',  link: 'link-cppa-oficial',  name: 'name-cppa-oficial',  badge: 'badge-cppa-oficial',  label: 'label-cppa-oficial',  ver: 'ver-cppa-oficial',  dep: 'dep-cppa-oficial',  date: 'date-cppa-oficial',  state: 'state-cppa-oficial',  type: 'oficial', defaultOrder: 1 },
+        pepoaOficial: { unit: 'PEPOA', card: 'card-pepoa-oficial', link: 'link-pepoa-oficial', name: 'name-pepoa-oficial', badge: 'badge-pepoa-oficial', label: 'label-pepoa-oficial', ver: 'ver-pepoa-oficial', dep: 'dep-pepoa-oficial', date: 'date-pepoa-oficial', state: 'state-pepoa-oficial', type: 'oficial', defaultOrder: 2 },
+        madreOficial: { unit: 'MADRE', card: 'card-madre-oficial', link: 'link-madre-oficial', name: 'name-madre-oficial', badge: 'badge-madre-oficial', label: 'label-madre-oficial', ver: 'ver-madre-oficial', dep: 'dep-madre-oficial', date: 'date-madre-oficial', state: 'state-madre-oficial', type: 'oficial', defaultOrder: 3 },
+        cppaAudit:    { unit: 'CPPA',  card: 'card-cppa-audit',    link: 'link-cppa-audit',    name: 'name-cppa-audit',    badge: 'badge-cppa-audit',    label: 'label-cppa-audit',    ver: 'ver-cppa-audit',    dep: 'dep-cppa-audit',    date: 'date-cppa-audit',    state: 'state-cppa-audit',    type: 'audit',   defaultOrder: 4 },
+        pepoaAudit:   { unit: 'PEPOA', card: 'card-pepoa-audit',   link: 'link-pepoa-audit',   name: 'name-pepoa-audit',   badge: 'badge-pepoa-audit',   label: 'label-pepoa-audit',   ver: 'ver-pepoa-audit',   dep: 'dep-pepoa-audit',   date: 'date-pepoa-audit',   state: 'state-pepoa-audit',   type: 'audit',   defaultOrder: 5 },
+        madreAudit:   { unit: 'MADRE', card: 'card-madre-audit',   link: 'link-madre-audit',   name: 'name-madre-audit',   badge: 'badge-madre-audit',   label: 'label-madre-audit',   ver: 'ver-madre-audit',   dep: 'dep-madre-audit',   date: 'date-madre-audit',   state: 'state-madre-audit',   type: 'audit',   defaultOrder: 6 }
+      };
+
+      var UNIT_ORDER_BASE = { CPPA: 1, PEPOA: 2, MADRE: 3 };
+      var state = {
+        ambientes: {},
+        releaseState: { environments: {} },
+        releaseHistory: [],
+        announcements: [],
+        settings: {}
+      };
+
+      function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatPtBrDateTime(iso) {
+        if (!iso) return '—';
+        var ts = Date.parse(iso);
+        if (isNaN(ts)) return String(iso);
+        try {
+          return new Date(ts).toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          });
+        } catch (e) {
+          return new Date(ts).toISOString().slice(0, 16).replace('T', ' ');
+        }
+      }
+
+      function formatPtBrToday() {
+        try {
+          return new Date().toLocaleDateString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+          });
+        } catch (e) {
+          return new Date().toLocaleDateString('pt-BR');
+        }
+      }
+
+      function setText(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+
+      function reorderUnitsGrid(ambientes) {
+        var grid = document.getElementById('unitsGrid');
+        if (!grid || !grid.appendChild) return;
+
+        var units = ['CPPA', 'PEPOA', 'MADRE'];
+        units.sort(function (uA, uB) {
+          var ofA = ambientes[uA.toLowerCase() + 'Oficial'];
+          var auA = ambientes[uA.toLowerCase() + 'Audit'];
+          var ofB = ambientes[uB.toLowerCase() + 'Oficial'];
+          var auB = ambientes[uB.toLowerCase() + 'Audit'];
+
+          var ordA = Math.min(
+            ofA && typeof ofA.ordem === 'number' ? ofA.ordem : 99,
+            auA && typeof auA.ordem === 'number' ? auA.ordem : 99
+          );
+          var ordB = Math.min(
+            ofB && typeof ofB.ordem === 'number' ? ofB.ordem : 99,
+            auB && typeof auB.ordem === 'number' ? auB.ordem : 99
+          );
+          if (ordA !== ordB) return ordA - ordB;
+          return UNIT_ORDER_BASE[uA] - UNIT_ORDER_BASE[uB];
+        });
+
+        for (var i = 0; i < units.length; i++) {
+          var card = document.getElementById('unit-card-' + units[i]);
+          if (card) grid.appendChild(card);
+        }
+
+        // Também ordena os slots OFICIAL/AUDIT dentro de cada card conforme ordem configurada
+        for (var j = 0; j < units.length; j++) {
+          var unitName = units[j];
+          var unitCard = document.getElementById('unit-card-' + unitName);
+          if (!unitCard || !unitCard.appendChild) continue;
+          var keyOf = unitName.toLowerCase() + 'Oficial';
+          var keyAu = unitName.toLowerCase() + 'Audit';
+          var ordOf = ambientes[keyOf] && typeof ambientes[keyOf].ordem === 'number' ? ambientes[keyOf].ordem : MAP[keyOf].defaultOrder;
+          var ordAu = ambientes[keyAu] && typeof ambientes[keyAu].ordem === 'number' ? ambientes[keyAu].ordem : MAP[keyAu].defaultOrder;
+          var slotOf = document.getElementById(MAP[keyOf].card);
+          var slotAu = document.getElementById(MAP[keyAu].card);
+          if (slotOf && slotAu) {
+            if (ordAu < ordOf) {
+              unitCard.appendChild(slotAu);
+              unitCard.appendChild(slotOf);
+            } else {
+              unitCard.appendChild(slotOf);
+              unitCard.appendChild(slotAu);
+            }
+          }
+        }
+      }
+
+      function applyConfig(cfg) {
+        if (!cfg) return;
+        var ambientes = cfg.ambientes || cfg.data || cfg;
+        state.ambientes = ambientes;
+
+        var activeCount = 0;
+        var totalCount = 0;
+
+        for (var key in MAP) {
+          if (!Object.prototype.hasOwnProperty.call(MAP, key)) continue;
+          var m = MAP[key];
+          var data = ambientes[key];
+          var elLink = document.getElementById(m.link);
+          var elName = document.getElementById(m.name);
+          var elBadge = document.getElementById(m.badge);
+          var elLabel = document.getElementById(m.label);
+
+          if (data) {
+            totalCount++;
+            var ativo = data.ativo !== false;
+            if (ativo) activeCount++;
+
+            if (data.nome && elName) {
+              elName.textContent = data.nome;
+            }
+
+            if (elLink) {
+              if (!ativo) {
+                elLink.href = '#';
+                elLink.removeAttribute('target');
+                elLink.removeAttribute('rel');
+                elLink.setAttribute('aria-disabled', 'true');
+                elLink.setAttribute('tabindex', '-1');
+                elLink.classList.add('disabled');
+                if (elLabel) elLabel.textContent = 'Indisponível no momento';
+                if (elBadge) {
+                  elBadge.textContent = 'Manutenção';
+                  elBadge.className = 'badge-status inactive';
+                }
+              } else {
+                if (data.url) {
+                  elLink.href = data.url;
+                  elLink.target = '_blank';
+                  elLink.rel = 'noopener noreferrer';
+                }
+                elLink.removeAttribute('aria-disabled');
+                elLink.removeAttribute('tabindex');
+                elLink.classList.remove('disabled');
+                if (elLabel) elLabel.textContent = m.type === 'oficial' ? 'Acessar Ambiente Oficial' : 'Acessar Homologação';
+                if (elBadge) {
+                  elBadge.textContent = m.type === 'oficial' ? 'Oficial' : 'AUDIT';
+                  elBadge.className = 'badge-status ' + m.type;
+                }
+              }
+            }
+          }
+        }
+
+        reorderUnitsGrid(ambientes);
+        setText('kpiActiveEnvs', activeCount + ' / ' + (totalCount || 6) + ' ativos');
+      }
+
+      function applyReleaseTelemetry() {
+        var envMap = (state.releaseState && state.releaseState.environments) || {};
+        for (var key in MAP) {
+          if (!Object.prototype.hasOwnProperty.call(MAP, key)) continue;
+          var m = MAP[key];
+          var rel = envMap[key];
+          if (!rel) {
+            setText(m.ver, 'Sem evento');
+            setText(m.dep, '—');
+            setText(m.date, '—');
+            setText(m.state, 'Sem registro');
+          } else {
+            var verLabel = 'v' + rel.versao + (rel.tipoEvento === 'rollback' ? ' (Rollback)' : '');
+            var depLabel = '@' + String(rel.deploymentVersion || '').replace(/^@/, '') + ' · ' + String(rel.commit || '').slice(0, 7);
+            setText(m.ver, verLabel);
+            setText(m.dep, depLabel);
+            setText(m.date, formatPtBrDateTime(rel.publicadoEm));
+            setText(m.state, rel.estadoHomologacao || 'PENDENTE');
+          }
+        }
+
+        var hist = Array.isArray(state.releaseHistory) ? state.releaseHistory : [];
+        setText('kpiReleaseCount', String(hist.length));
+        setText('navCountReleases', String(hist.length));
+        setText('kpiReleaseSub', hist.length > 0 ? 'Eventos auditados persistidos' : 'Nenhum evento registrado');
+
+        if (hist.length > 0) {
+          var newest = hist[0];
+          setText('kpiLastRelease', 'v' + newest.versao + ' · ' + newest.unidade + ' ' + newest.ambiente);
+          setText('kpiLastReleaseSub', formatPtBrDateTime(newest.publicadoEm));
+        } else {
+          setText('kpiLastRelease', 'Sem registro');
+          setText('kpiLastReleaseSub', 'Aguardando evento confirmado');
+        }
+
+        renderStageMatrix();
+        renderReleasesHistory();
+      }
+
+      function renderStageMatrix() {
+        var container = document.getElementById('stageMatrixGrid');
+        if (!container) return;
+        var envMap = (state.releaseState && state.releaseState.environments) || {};
+        var html = '';
+
+        for (var i = 0; i < Object.keys(MAP).length; i++) {
+          var key = Object.keys(MAP)[i];
+          var m = MAP[key];
+          var rel = envMap[key];
+          var envLabel = m.type === 'oficial' ? 'OFICIAL' : 'AUDIT';
+          var tagClass = m.type === 'oficial' ? 'tag-oficial' : 'tag-audit';
+
+          html += '<div class="matrix-card">' +
+            '<div class="matrix-title">' +
+              '<span>' + escapeHtml(m.unit) + '</span>' +
+              '<span class="tag-pill ' + tagClass + '">' + envLabel + '</span>' +
+            '</div>' +
+            '<div class="stage-row"><span class="stage-key">Git (commit)</span><span class="stage-val">' + (rel && rel.commit ? escapeHtml(rel.commit) : '—') + '</span></div>' +
+            '<div class="stage-row"><span class="stage-key">Candidato</span><span class="stage-val">' + (rel && rel.candidatoVersao ? 'v' + escapeHtml(rel.candidatoVersao) : '—') + '</span></div>' +
+            '<div class="stage-row"><span class="stage-key">Publicado</span><span class="stage-val">' + (rel ? ('v' + escapeHtml(rel.versao) + ' (@' + escapeHtml(String(rel.deploymentVersion).replace(/^@/, '')) + ')') : 'Não registrado') + '</span></div>' +
+            '<div class="stage-row"><span class="stage-key">Homologado</span><span class="stage-val">' + (rel ? escapeHtml(rel.estadoHomologacao || 'PENDENTE') : 'Não registrado') + '</span></div>' +
+          '</div>';
+        }
+        container.innerHTML = html;
+      }
+
+      function renderReleasesHistory() {
+        var container = document.getElementById('releasesHistoryContainer');
+        if (!container) return;
+
+        var uFilter = (document.getElementById('filterRelUnit') || {}).value || 'TODAS';
+        var eFilter = (document.getElementById('filterRelEnv') || {}).value || 'TODOS';
+        var vFilter = ((document.getElementById('filterRelVersion') || {}).value || '').trim().toLowerCase();
+
+        var filtered = (state.releaseHistory || []).filter(function (ev) {
+          if (uFilter !== 'TODAS' && String(ev.unidade || '').toUpperCase() !== uFilter) return false;
+          if (eFilter !== 'TODOS' && String(ev.ambiente || '').toUpperCase() !== eFilter) return false;
+          if (vFilter && String(ev.versao || '').toLowerCase().indexOf(vFilter) === -1) return false;
+          return true;
+        });
+
+        setText('releasesFilterSummary', filtered.length + ' registro(s)');
+
+        if (filtered.length === 0) {
+          container.innerHTML = '<div class="empty-state"><strong>Nenhuma atualização encontrada</strong><p>Ainda não existem eventos registrados para os filtros selecionados.</p></div>';
+          return;
+        }
+
+        var rows = filtered.map(function (ev) {
+          var isOficial = String(ev.ambiente || '').toUpperCase() === 'OFICIAL';
+          var isRollback = ev.tipoEvento === 'rollback';
+          var hom = String(ev.estadoHomologacao || 'PENDENTE').toUpperCase();
+          var homClass = hom === 'HOMOLOGADO' ? 'tag-homologado' : (hom === 'REVERTIDO' || hom === 'REJEITADO' ? 'tag-rollback' : 'tag-pendente');
+
+          return '<tr>' +
+            '<td>' + escapeHtml(formatPtBrDateTime(ev.publicadoEm)) +
+              (ev.stale ? '<div><span class="tag-pill tag-stale">Evento atrasado</span></div>' : '') +
+            '</td>' +
+            '<td><strong>' + escapeHtml(ev.unidade) + '</strong></td>' +
+            '<td><span class="tag-pill ' + (isOficial ? 'tag-oficial' : 'tag-audit') + '">' + escapeHtml(ev.ambiente) + '</span></td>' +
+            '<td><strong>v' + escapeHtml(ev.versao) + '</strong></td>' +
+            '<td><span class="tag-pill ' + (isRollback ? 'tag-rollback' : 'tag-publish') + '">' + escapeHtml(ev.tipoEvento) + '</span></td>' +
+            '<td><code>' + escapeHtml(ev.commit) + '</code></td>' +
+            '<td><div>@' + escapeHtml(String(ev.deploymentVersion || '').replace(/^@/, '')) + '</div><div style="font-size:11px;color:var(--text-secondary);">' + escapeHtml(String(ev.deploymentId || '').slice(0, 16)) + '…</div></td>' +
+            '<td><span class="tag-pill ' + homClass + '">' + escapeHtml(hom) + '</span></td>' +
+            '<td>' + escapeHtml(ev.notas || '—') + '</td>' +
+          '</tr>';
+        }).join('');
+
+        container.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
+          '<th>Publicado em</th><th>Unidade</th><th>Ambiente</th><th>Versão</th><th>Evento</th><th>Commit</th><th>Deployment</th><th>Homologação</th><th>Notas</th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+
+      function renderAnnouncements() {
+        var list = Array.isArray(state.announcements) ? state.announcements : [];
+        setText('kpiAnnCount', String(list.length));
+        setText('navCountAnnouncements', String(list.length));
+        setText('kpiAnnSub', list.length > 0 ? 'Ativos dentro da validade' : 'Nenhum comunicado vigente');
+
+        var container = document.getElementById('announcementsContainer');
+        if (!container) return;
+
+        var uFilter = (document.getElementById('filterAnnUnit') || {}).value || 'TODAS';
+        var cFilter = (document.getElementById('filterAnnCat') || {}).value || 'TODAS';
+
+        var filtered = list.filter(function (a) {
+          if (uFilter !== 'TODAS' && a.unidade !== 'TODAS' && a.unidade !== uFilter) return false;
+          if (cFilter !== 'TODAS' && a.categoria !== cFilter) return false;
+          return true;
+        });
+
+        setText('annSummaryNote', filtered.length + ' comunicado(s) exibido(s)');
+
+        if (filtered.length === 0) {
+          container.innerHTML = '<div class="empty-state"><strong>Nenhum comunicado vigente</strong><p>Não há comunicados ativos para os filtros selecionados no momento.</p></div>';
+          return;
+        }
+
+        var cards = filtered.map(function (a) {
+          var prioClass = a.prioridade === 'Alta' ? 'prio-alta' : (a.prioridade === 'Baixa' ? 'prio-baixa' : 'prio-normal');
+          var prioTag = a.prioridade === 'Alta' ? 'tag-rollback' : (a.prioridade === 'Normal' ? 'tag-publish' : 'tag-pendente');
+          return '<article class="ann-card ' + prioClass + '">' +
+            '<div class="ann-badges">' +
+              '<span class="tag-pill ' + prioTag + '">Prioridade ' + escapeHtml(a.prioridade) + '</span>' +
+              '<span class="tag-pill tag-pendente">' + escapeHtml(a.categoria) + '</span>' +
+              '<span class="tag-pill tag-oficial">' + escapeHtml(a.unidade === 'TODAS' ? 'Todas as unidades' : a.unidade) + '</span>' +
+            '</div>' +
+            '<h3 class="ann-title">' + escapeHtml(a.titulo) + '</h3>' +
+            '<p class="ann-desc">' + escapeHtml(a.descricao) + '</p>' +
+            '<div class="ann-foot">' +
+              '<span>Publicado em ' + escapeHtml(formatPtBrDateTime(a.criadoEm)) + '</span>' +
+              '<span>' + (a.validade ? 'Válido até ' + escapeHtml(a.validade) : 'Sem data de expiração') + '</span>' +
+            '</div>' +
+          '</article>';
+        }).join('');
+
+        container.innerHTML = '<div class="announcements-list">' + cards + '</div>';
+      }
+
+      function applySettings(settings) {
+        if (!settings || typeof settings !== 'object') return;
+        state.settings = settings;
+        if (settings.tituloCentral) setText('centralTitleBadge', settings.tituloCentral);
+        if (settings.subtituloInstitucional) setText('centralSubtitle', settings.subtituloInstitucional);
+        var obsBanner = document.getElementById('obsBanner');
+        if (obsBanner) {
+          if (settings.observacaoOperacional && settings.observacaoOperacional.trim()) {
+            setText('obsBannerText', settings.observacaoOperacional.trim());
+            obsBanner.classList.add('visible');
+          } else {
+            obsBanner.classList.remove('visible');
+          }
+        }
+      }
+
+      function applyBootstrap(payload) {
+        if (!payload) return;
+        applyConfig(payload);
+        if (payload.releaseState) state.releaseState = payload.releaseState;
+        if (Array.isArray(payload.releaseHistory)) state.releaseHistory = payload.releaseHistory;
+        if (Array.isArray(payload.announcements)) state.announcements = payload.announcements;
+        if (payload.settings) applySettings(payload.settings);
+        applyReleaseTelemetry();
+        renderAnnouncements();
+      }
+
+      function switchView(viewName) {
+        var panels = document.querySelectorAll ? document.querySelectorAll('.view-panel') : [];
+        for (var i = 0; i < panels.length; i++) {
+          var isTarget = panels[i].id === 'view-' + viewName;
+          panels[i].classList.toggle('active', isTarget);
+        }
+        var btns = document.querySelectorAll ? document.querySelectorAll('.nav-btn[data-view]') : [];
+        for (var j = 0; j < btns.length; j++) {
+          var active = btns[j].getAttribute('data-view') === viewName;
+          btns[j].classList.toggle('active', active);
+          btns[j].setAttribute('aria-selected', active ? 'true' : 'false');
+        }
+      }
+
+      function syncThemeButton() {
+        var root = document.documentElement;
+        if (!root) return;
+        var isDark = root.getAttribute && root.getAttribute('data-theme') === 'dark';
+        setText('themeLabel', isDark ? 'Claro' : 'Escuro');
+      }
+
+      function setupInteractions() {
+        setText('currentDatePtBr', formatPtBrToday());
+        syncThemeButton();
+
+        var navBtns = document.querySelectorAll ? document.querySelectorAll('.nav-btn[data-view]') : [];
+        for (var i = 0; i < navBtns.length; i++) {
+          navBtns[i].addEventListener('click', function () {
+            switchView(this.getAttribute('data-view'));
+          });
+        }
+
+        var themeBtn = document.getElementById('btnThemeToggle');
+        if (themeBtn && themeBtn.addEventListener) {
+          themeBtn.addEventListener('click', function () {
+            var root = document.documentElement;
+            var nextDark = root.getAttribute('data-theme') !== 'dark';
+            if (nextDark) {
+              root.setAttribute('data-theme', 'dark');
+            } else {
+              root.removeAttribute('data-theme');
+            }
+            try {
+              localStorage.setItem('sisfar_portal_theme', nextDark ? 'dark' : 'light');
+            } catch (e) {}
+            syncThemeButton();
+          });
+        }
+
+        var relFilterIds = ['filterRelUnit', 'filterRelEnv', 'filterRelVersion'];
+        for (var r = 0; r < relFilterIds.length; r++) {
+          var elR = document.getElementById(relFilterIds[r]);
+          if (elR && elR.addEventListener) {
+            elR.addEventListener('input', renderReleasesHistory);
+            elR.addEventListener('change', renderReleasesHistory);
+          }
+        }
+        var clearRel = document.getElementById('btnClearReleaseFilters');
+        if (clearRel && clearRel.addEventListener) {
+          clearRel.addEventListener('click', function () {
+            document.getElementById('filterRelUnit').value = 'TODAS';
+            document.getElementById('filterRelEnv').value = 'TODOS';
+            document.getElementById('filterRelVersion').value = '';
+            renderReleasesHistory();
+          });
+        }
+
+        var annFilterIds = ['filterAnnUnit', 'filterAnnCat'];
+        for (var a = 0; a < annFilterIds.length; a++) {
+          var elA = document.getElementById(annFilterIds[a]);
+          if (elA && elA.addEventListener) {
+            elA.addEventListener('change', renderAnnouncements);
+          }
+        }
+        var clearAnn = document.getElementById('btnClearAnnFilters');
+        if (clearAnn && clearAnn.addEventListener) {
+          clearAnn.addEventListener('click', function () {
+            document.getElementById('filterAnnUnit').value = 'TODAS';
+            document.getElementById('filterAnnCat').value = 'TODAS';
+            renderAnnouncements();
+          });
+        }
+      }
+
+      if (INITIAL_PORTAL_DATA) {
+        applyBootstrap(INITIAL_PORTAL_DATA);
+      }
+      setupInteractions();
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          var runner = google.script.run
+            .withSuccessHandler(function (res) {
+              if (res && res.success) {
+                applyBootstrap(res);
+              }
+            })
+            .withFailureHandler(function (err) {
+              console.warn('[SISFAR Portal] Mantendo bootstrap inicial do servidor.', err);
+            });
+          if (typeof runner.apiGetPublicBootstrap === 'function') {
+            runner.apiGetPublicBootstrap();
+          } else if (typeof runner.apiGetPublicConfig === 'function') {
+            runner.apiGetPublicConfig();
+          }
+        } catch (err) {
+          console.warn('[SISFAR Portal] RPC de atualização indisponível.', err);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
