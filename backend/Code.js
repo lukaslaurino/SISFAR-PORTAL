@@ -1,10 +1,11 @@
 /**
- * SISFAR — Backend Seguro de Configuração de Links do Portal (Google Apps Script)
+ * SISFAR — Backend Seguro e Portal Institucional (Google Apps Script)
  *
- * Arquitetura de Segurança:
- * 1. Leitura Pública (GET): Acesso anônimo permitido exclusivamente para leitura dos links pelo portal público (Zero mutações).
- * 2. Operações Administrativas (POST / Server Functions): Estritamente restritas à autenticação via Conta Google (Session.getActiveUser().getEmail()) em allowlist explícita.
- * 3. Validação Fail-Closed: Validação estrita de schema dos 6 IDs canônicos, URLs HTTPS, tipos e integridade.
+ * Arquitetura de Segurança e Hospedagem:
+ * 1. Portal Público (HtmlService): Servido via ?view=portal ou rota raiz sem parâmetros, sem dependência externa do GitHub.
+ * 2. Leitura Pública JSON (GET ?action=get): Acesso anônimo permitido exclusivamente para leitura dos links (Zero mutações).
+ * 3. Operações Administrativas (POST / Server Functions / ?view=admin / ?admin=1): Estritamente restritas à autenticação via Conta Google (Session.getActiveUser().getEmail()) em allowlist explícita.
+ * 4. Validação Fail-Closed: Validação estrita de schema dos 6 IDs canônicos, URLs HTTPS, tipos e integridade em CONFIG_LINKS.
  */
 
 const DEFAULT_CONFIG = {
@@ -119,13 +120,58 @@ function getConfig() {
   try {
     const props = PropertiesService.getScriptProperties();
     const raw = props.getProperty("CONFIG_LINKS");
-    if (!raw) return DEFAULT_CONFIG;
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     const parsed = JSON.parse(raw);
     validatePayload(parsed);
     return parsed;
   } catch (e) {
-    return DEFAULT_CONFIG;
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   }
+}
+
+function getConfigUpdatedAt() {
+  try {
+    const ts = PropertiesService.getScriptProperties().getProperty("CONFIG_UPDATED_AT");
+    if (ts) return ts;
+  } catch (err) {}
+  return new Date().toISOString();
+}
+
+function getWebAppBaseUrl() {
+  try {
+    const url = ScriptApp.getService().getUrl();
+    return url || "";
+  } catch (err) {
+    return "";
+  }
+}
+
+function buildAppViewUrl(viewQuery) {
+  const base = getWebAppBaseUrl();
+  if (!base) {
+    return "?" + viewQuery;
+  }
+  const sep = base.indexOf("?") === -1 ? "?" : "&";
+  return base + sep + viewQuery;
+}
+
+function safeJsonForHtmlScript(value) {
+  return JSON.stringify(value)
+    .replace(/&/g, "\\u0026")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+function escapeHtmlAttr(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function saveConfigInternal(data, author) {
@@ -145,31 +191,40 @@ function saveConfigInternal(data, author) {
 
 /**
  * Ponto de entrada GET
- * 1. Sem parâmetros ou ?action=get: Retorna JSON de leitura pública (somente leitura).
- * 2. ?admin=1 ou ?view=admin: Renderiza a interface administrativa com verificação de autenticação Google.
+ * 1. ?admin=1 ou ?view=admin: Renderiza a Central Administrativa com verificação de autenticação Google.
+ * 2. ?action=get ou ?format=json: Retorna JSON de leitura pública (somente leitura).
+ * 3. ?view=portal ou sem parâmetros: Renderiza o Portal SISFAR via HtmlService sem dependência do GitHub.
  */
 function doGet(e) {
   const params = (e && e.parameter) || {};
-  
+
   if (params.admin === "1" || params.view === "admin") {
     return renderAdminHtml();
   }
 
-  // Consulta pública de leitura de links (Zero mutações permitidas via GET)
-  let updatedAt = new Date().toISOString();
-  try {
-    const ts = PropertiesService.getScriptProperties().getProperty("CONFIG_UPDATED_AT");
-    if (ts) updatedAt = ts;
-  } catch (err) {}
+  if (params.action === "get" || params.format === "json") {
+    const responseData = {
+      success: true,
+      data: getConfig(),
+      updatedAt: getConfigUpdatedAt()
+    };
 
-  const responseData = {
+    return ContentService.createTextOutput(JSON.stringify(responseData))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  return renderPortalHtml();
+}
+
+/**
+ * Leitura pública da configuração via RPC Google Apps Script (somente leitura)
+ */
+function apiGetPublicConfig() {
+  return {
     success: true,
     data: getConfig(),
-    updatedAt: updatedAt
+    updatedAt: getConfigUpdatedAt()
   };
-
-  return ContentService.createTextOutput(JSON.stringify(responseData))
-    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
@@ -264,9 +319,602 @@ function apiResetAdminConfig() {
   return saveConfigInternal(DEFAULT_CONFIG, userEmail + " (reset)");
 }
 
+function renderPortalHtml() {
+  const initialConfig = getConfig();
+  const updatedAt = getConfigUpdatedAt();
+  const adminUrl = buildAppViewUrl("view=admin");
+  const safeAdminUrl = escapeHtmlAttr(adminUrl);
+  const initialPayloadJson = safeJsonForHtmlScript({
+    ambientes: initialConfig,
+    updatedAt: updatedAt
+  });
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SISFAR — Sistema Integrado de Farmácia Prisional</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #1e293b;
+      --border-subtle: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --oficial-accent: #10b981;
+      --oficial-bg: rgba(16, 185, 129, 0.08);
+      --oficial-border: rgba(16, 185, 129, 0.25);
+      --oficial-badge-bg: rgba(16, 185, 129, 0.15);
+      --oficial-badge-text: #34d399;
+      --oficial-btn: #059669;
+      --oficial-btn-hover: #10b981;
+
+      --audit-accent: #f59e0b;
+      --audit-bg: rgba(245, 158, 11, 0.08);
+      --audit-border: rgba(245, 158, 11, 0.25);
+      --audit-badge-bg: rgba(245, 158, 11, 0.15);
+      --audit-badge-text: #fbbf24;
+      --audit-btn: #d97706;
+      --audit-btn-hover: #f59e0b;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      flex: 1;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      color: #ffffff;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 0.35rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-weight: 400;
+      margin-bottom: 0.75rem;
+    }
+
+    .header-action-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 0.75rem;
+    }
+
+    .btn-admin-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .btn-admin-header:hover {
+      background-color: #334155;
+      color: var(--text-primary);
+      border-color: #475569;
+    }
+
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-pill {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+    }
+
+    .section-pill.oficial {
+      background: var(--oficial-badge-bg);
+      color: var(--oficial-badge-text);
+      border: 1px solid var(--oficial-border);
+    }
+
+    .section-pill.audit {
+      background: var(--audit-badge-bg);
+      color: var(--audit-badge-text);
+      border: 1px solid var(--audit-border);
+    }
+
+    .section-heading {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .grid-units {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border-subtle);
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card.oficial {
+      border-color: var(--oficial-border);
+      background: linear-gradient(180deg, var(--oficial-bg) 0%, var(--bg-card) 60%);
+    }
+
+    .card.oficial:hover {
+      border-color: var(--oficial-accent);
+    }
+
+    .card.audit {
+      border-color: var(--audit-border);
+      background: linear-gradient(180deg, var(--audit-bg) 0%, var(--bg-card) 60%);
+    }
+
+    .card.audit:hover {
+      border-color: var(--audit-accent);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .unit-acronym {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    .badge-status {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .badge-status.oficial {
+      background-color: var(--oficial-badge-bg);
+      color: var(--oficial-badge-text);
+      border: 1px solid var(--oficial-border);
+    }
+
+    .badge-status.audit {
+      background-color: var(--audit-badge-bg);
+      color: var(--audit-badge-text);
+      border: 1px solid var(--audit-border);
+    }
+
+    .badge-status.inactive {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .unit-name {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+      min-height: 2.6rem;
+    }
+
+    .btn-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: var(--radius-md);
+      transition: background-color 0.15s ease, opacity 0.15s ease;
+      color: #ffffff;
+    }
+
+    .btn-action.oficial {
+      background-color: var(--oficial-btn);
+    }
+
+    .btn-action.oficial:hover {
+      background-color: var(--oficial-btn-hover);
+    }
+
+    .btn-action.audit {
+      background-color: var(--audit-btn);
+    }
+
+    .btn-action.audit:hover {
+      background-color: var(--audit-btn-hover);
+    }
+
+    .btn-action.disabled {
+      background-color: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-action svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    footer p + p {
+      margin-top: 0.35rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1.5rem 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      .grid-units {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M9 12h6"/>
+          <path d="M12 9v6"/>
+        </svg>
+      </div>
+      <h1>SISFAR</h1>
+      <p class="subtitle">Sistema Integrado de Farmácia Prisional</p>
+
+      <div class="header-action-wrap">
+        <a id="btnAdminPortal" href="` + safeAdminUrl + `" class="btn-admin-header" title="Acessar Central Administrativa">
+          <span>⚙️ Central Administrativa</span>
+        </a>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-title-wrap">
+        <span class="section-pill oficial">Produção</span>
+        <h2 class="section-heading">Operação Oficial</h2>
+      </div>
+
+      <div class="grid-units" id="gridOficial">
+        <div class="card oficial" id="card-cppa-oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">CPPA</span>
+              <span class="badge-status oficial" id="badge-cppa-oficial">Oficial</span>
+            </div>
+            <p class="unit-name" id="name-cppa-oficial">Cadeia Pública de Porto Alegre</p>
+          </div>
+          <a id="link-cppa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span id="label-cppa-oficial">Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <div class="card oficial" id="card-pepoa-oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">PEPOA</span>
+              <span class="badge-status oficial" id="badge-pepoa-oficial">Oficial</span>
+            </div>
+            <p class="unit-name" id="name-pepoa-oficial">Penitenciária Estadual de Porto Alegre</p>
+          </div>
+          <a id="link-pepoa-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span id="label-pepoa-oficial">Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <div class="card oficial" id="card-madre-oficial">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">MADRE</span>
+              <span class="badge-status oficial" id="badge-madre-oficial">Oficial</span>
+            </div>
+            <p class="unit-name" id="name-madre-oficial">Presídio Estadual Feminino Madre Pelletier</p>
+          </div>
+          <a id="link-madre-oficial" href="#" target="_blank" rel="noopener noreferrer" class="btn-action oficial">
+            <span id="label-madre-oficial">Acessar Ambiente Oficial</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title-wrap">
+        <span class="section-pill audit">Homologação</span>
+        <h2 class="section-heading">Ambientes de Homologação / AUDIT</h2>
+      </div>
+
+      <div class="grid-units" id="gridAudit">
+        <div class="card audit" id="card-cppa-audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">CPPA</span>
+              <span class="badge-status audit" id="badge-cppa-audit">AUDIT</span>
+            </div>
+            <p class="unit-name" id="name-cppa-audit">Cadeia Pública de Porto Alegre</p>
+          </div>
+          <a id="link-cppa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span id="label-cppa-audit">Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <div class="card audit" id="card-pepoa-audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">PEPOA</span>
+              <span class="badge-status audit" id="badge-pepoa-audit">AUDIT</span>
+            </div>
+            <p class="unit-name" id="name-pepoa-audit">Penitenciária Estadual de Porto Alegre</p>
+          </div>
+          <a id="link-pepoa-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span id="label-pepoa-audit">Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+
+        <div class="card audit" id="card-madre-audit">
+          <div>
+            <div class="card-header">
+              <span class="unit-acronym">MADRE</span>
+              <span class="badge-status audit" id="badge-madre-audit">AUDIT</span>
+            </div>
+            <p class="unit-name" id="name-madre-audit">Presídio Estadual Feminino Madre Pelletier</p>
+          </div>
+          <a id="link-madre-audit" href="#" target="_blank" rel="noopener noreferrer" class="btn-action audit">
+            <span id="label-madre-audit">Acessar Homologação</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p><strong>SISFAR</strong> — Sistema Integrado de Farmácia Prisional</p>
+    <p>Acesso restrito e institucional aos serviços de saúde penitenciária.</p>
+  </footer>
+
+  <script>
+    (function () {
+      var INITIAL_PORTAL_DATA = ` + initialPayloadJson + `;
+
+      var MAP = {
+        cppaOficial: { card: 'card-cppa-oficial', link: 'link-cppa-oficial', name: 'name-cppa-oficial', badge: 'badge-cppa-oficial', label: 'label-cppa-oficial', type: 'oficial', grid: 'gridOficial', defaultOrder: 1 },
+        pepoaOficial: { card: 'card-pepoa-oficial', link: 'link-pepoa-oficial', name: 'name-pepoa-oficial', badge: 'badge-pepoa-oficial', label: 'label-pepoa-oficial', type: 'oficial', grid: 'gridOficial', defaultOrder: 2 },
+        madreOficial: { card: 'card-madre-oficial', link: 'link-madre-oficial', name: 'name-madre-oficial', badge: 'badge-madre-oficial', label: 'label-madre-oficial', type: 'oficial', grid: 'gridOficial', defaultOrder: 3 },
+        cppaAudit: { card: 'card-cppa-audit', link: 'link-cppa-audit', name: 'name-cppa-audit', badge: 'badge-cppa-audit', label: 'label-cppa-audit', type: 'audit', grid: 'gridAudit', defaultOrder: 4 },
+        pepoaAudit: { card: 'card-pepoa-audit', link: 'link-pepoa-audit', name: 'name-pepoa-audit', badge: 'badge-pepoa-audit', label: 'label-pepoa-audit', type: 'audit', grid: 'gridAudit', defaultOrder: 5 },
+        madreAudit: { card: 'card-madre-audit', link: 'link-madre-audit', name: 'name-madre-audit', badge: 'badge-madre-audit', label: 'label-madre-audit', type: 'audit', grid: 'gridAudit', defaultOrder: 6 }
+      };
+
+      function reorderGrid(gridId, ambientes, targetType) {
+        var grid = document.getElementById(gridId);
+        if (!grid || !grid.appendChild) return;
+
+        var keys = Object.keys(MAP).filter(function (k) {
+          return MAP[k].type === targetType;
+        });
+
+        keys.sort(function (a, b) {
+          var da = ambientes[a] || {};
+          var db = ambientes[b] || {};
+          var oa = typeof da.ordem === 'number' ? da.ordem : MAP[a].defaultOrder;
+          var ob = typeof db.ordem === 'number' ? db.ordem : MAP[b].defaultOrder;
+          if (oa !== ob) return oa - ob;
+          return MAP[a].defaultOrder - MAP[b].defaultOrder;
+        });
+
+        for (var i = 0; i < keys.length; i++) {
+          var elCard = document.getElementById(MAP[keys[i]].card);
+          if (elCard) {
+            grid.appendChild(elCard);
+          }
+        }
+      }
+
+      function applyConfig(cfg) {
+        if (!cfg) return;
+        var ambientes = cfg.ambientes || cfg;
+
+        for (var key in MAP) {
+          if (Object.prototype.hasOwnProperty.call(MAP, key)) {
+            var m = MAP[key];
+            var data = ambientes[key];
+            var elLink = document.getElementById(m.link);
+            var elName = document.getElementById(m.name);
+            var elBadge = document.getElementById(m.badge);
+            var elLabel = document.getElementById(m.label);
+
+            if (data && elLink) {
+              var url = (typeof data === 'string') ? data : data.url;
+              var nome = data.nome;
+              var ativo = (data.ativo !== false);
+
+              if (nome && elName) {
+                elName.textContent = nome;
+              }
+
+              if (!ativo) {
+                elLink.href = '#';
+                elLink.removeAttribute('target');
+                elLink.removeAttribute('rel');
+                elLink.setAttribute('aria-disabled', 'true');
+                elLink.setAttribute('tabindex', '-1');
+                elLink.classList.add('disabled');
+                if (elLabel) elLabel.textContent = 'Indisponível no momento';
+                if (elBadge) {
+                  elBadge.textContent = 'Manutenção';
+                  elBadge.className = 'badge-status inactive';
+                }
+              } else {
+                if (url) {
+                  elLink.href = url;
+                  elLink.target = '_blank';
+                  elLink.rel = 'noopener noreferrer';
+                }
+                elLink.removeAttribute('aria-disabled');
+                elLink.removeAttribute('tabindex');
+                elLink.classList.remove('disabled');
+                if (elLabel) elLabel.textContent = (m.type === 'oficial' ? 'Acessar Ambiente Oficial' : 'Acessar Homologação');
+                if (elBadge) {
+                  elBadge.textContent = (m.type === 'oficial' ? 'Oficial' : 'AUDIT');
+                  elBadge.className = 'badge-status ' + m.type;
+                }
+              }
+            }
+          }
+        }
+
+        reorderGrid('gridOficial', ambientes, 'oficial');
+        reorderGrid('gridAudit', ambientes, 'audit');
+      }
+
+      applyConfig(INITIAL_PORTAL_DATA);
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler(function (res) {
+              if (res && res.success && res.data) {
+                applyConfig({ ambientes: res.data });
+              }
+            })
+            .withFailureHandler(function (err) {
+              console.warn('[SISFAR Portal] Mantendo configuração inicial do servidor.', err);
+            })
+            .apiGetPublicConfig();
+        } catch (err) {
+          console.warn('[SISFAR Portal] RPC de atualização indisponível.', err);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(htmlContent)
+    .setTitle("SISFAR — Sistema Integrado de Farmácia Prisional")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function renderAdminHtml() {
   const userEmail = Session.getActiveUser().getEmail();
   const isAuth = isAuthorizedUser(userEmail);
+  const portalUrl = buildAppViewUrl("view=portal");
+  const safePortalUrl = escapeHtmlAttr(portalUrl);
 
   if (!isAuth) {
     return HtmlService.createHtmlOutput(
@@ -280,9 +928,9 @@ function renderAdminHtml() {
       "</style></head><body><div class=\"card\">" +
       "<h2>403 — Acesso Restrito</h2>" +
       "<p>A Central Administrativa do SISFAR é restrita a administradores autorizados.</p>" +
-      "<p>Conta conectada:<br><span class=\"email\">" + (userEmail || "Nenhuma conta Google detectada") + "</span></p>" +
+      "<p>Conta conectada:<br><span class=\"email\">" + escapeHtmlAttr(userEmail || "Nenhuma conta Google detectada") + "</span></p>" +
       "<p>Solicite permissão ao administrador central do sistema caso necessite de acesso.</p>" +
-      "<a href=\"https://lukaslaurino.github.io/SISFAR-PORTAL/\">← Voltar ao Portal Público</a>" +
+      "<a href=\"" + safePortalUrl + "\">← Voltar ao Portal Público</a>" +
       "</div></body></html>"
     ).setTitle("SISFAR — Acesso Negado");
   }
@@ -368,7 +1016,7 @@ function renderAdminHtml() {
           <p class="subtitle">SISFAR — Usuário autenticado: <strong>` + safeEmail + `</strong></p>
         </div>
       </div>
-      <a href="https://lukaslaurino.github.io/SISFAR-PORTAL/" class="btn-secondary">← Voltar ao Portal</a>
+      <a href="` + safePortalUrl + `" class="btn-secondary">← Voltar ao Portal</a>
     </div>
 
     <div class="status-box">
@@ -465,7 +1113,7 @@ function renderAdminHtml() {
         card.innerHTML = 
           '<div class="card-top">' +
             '<div><span class="env-tag">' + safeId + '</span></div>' +
-            '<a href="' + safeUrl + '" target="_blank" class="btn-test">Testar Link ↗</a>' +
+            '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="btn-test">Testar Link ↗</a>' +
           '</div>' +
           '<div class="form-row">' +
             '<div class="form-group">' +
