@@ -440,12 +440,22 @@ function createDomHarness(html) {
         Math,
         String,
         Number,
+        Boolean,
+        Error,
+        RegExp,
+        isNaN,
+        parseInt,
+        encodeURIComponent,
+        setTimeout,
+        clearTimeout,
         localStorage: {
           getItem(k) { return Object.prototype.hasOwnProperty.call(lsMap, k) ? lsMap[k] : null; },
           setItem(k, v) { lsMap[k] = String(v); }
         },
         document: {
+          readyState: 'complete',
           documentElement: docEl,
+          createElement(tag) { return makeEl('dyn-' + Math.random(), tag); },
           getElementById(id) {
             return elements[id] || null;
           },
@@ -457,6 +467,7 @@ function createDomHarness(html) {
           ? { script: { run: rpcMock } }
           : undefined
       };
+      domCtx.window = domCtx;
       vm.createContext(domCtx);
       vm.runInContext(inlineScript, domCtx);
     }
@@ -1331,4 +1342,123 @@ test('Cliente Portal 2.1: painel Status, amostra insuficiente, disponibilidade o
   assert.ok(harness.elements.statusAvailabilityContainer.innerHTML.includes('100% HTTP acessível'));
   assert.ok(harness.elements.statusTimelineContainer.innerHTML.includes('lacunas'));
   assert.ok(harness.elements.statusSvgChartContainer.innerHTML.includes('<svg'));
+});
+
+test('UrlFetchApp.fetchAll lote bem-sucedido e contrato público ?action=status sem vazamento administrativo', () => {
+  const { SISFAR_CONFIG } = require(LINKS_JS_PATH);
+  let fetchAllCalls = 0;
+  let singleFetchCalls = 0;
+  const gas = createGasContext({
+    userEmail: 'lukaslaurino@gmail.com',
+    fetchHandler() {
+      singleFetchCalls++;
+      return { status: 200, body: '<html>OK</html>' };
+    },
+    fetchAllHandler(reqs) {
+      fetchAllCalls++;
+      return reqs.map((r) => {
+        assert.equal(r.followRedirects, false);
+        assert.equal(r.muteHttpExceptions, true);
+        if (r.url === SISFAR_CONFIG.ambientes.cppaOficial.url) {
+          return { status: 200, body: '<html>OK</html>' };
+        }
+        return { status: 302, headers: { Location: 'https://accounts.google.com/ServiceLogin?continue=' + encodeURIComponent(r.url) } };
+      });
+    }
+  });
+
+  gas.ctx.apiSaveMonitoringSettings({ useFetchAll: true });
+  const res = gas.ctx.runScheduledMonitoringCheck();
+  assert.equal(res.success, true);
+  assert.equal(res.mode, 'fetchAll');
+  assert.equal(fetchAllCalls, 1);
+  assert.equal(singleFetchCalls, 0);
+
+  // Consulta pública ?action=status com sessão anônima
+  gas.setUserEmail('');
+  const statusRes = JSON.parse(gas.ctx.doGet({ parameter: { action: 'status' } }).getContent());
+  assert.equal(statusRes.success, true);
+  assert.equal(statusRes.schemaVersion, '2.1');
+  assert.equal(statusRes.monitoring.summary.accessible, 1);
+  assert.equal(statusRes.monitoring.summary.authRequired, 5);
+  assert.equal(statusRes.monitoring.summary.nonVerifiable, 5);
+  assert.equal(statusRes.monitoring.triggerDiagnostics, undefined, 'Endpoint público não deve expor diagnóstico de triggers');
+  assert.equal(statusRes.monitoring.storageStats, undefined, 'Endpoint público não deve expor detalhes internos de armazenamento');
+  assert.equal(statusRes.monitoring.quotaEstimate.checksPerDayNominal, 576);
+});
+
+test('Cliente Admin 2.1: renderização de diagnóstico, cotas, incidentes, manutenções e gate fail-closed', () => {
+  const gas = createGasContext({
+    userEmail: 'lukaslaurinocppa@gmail.com',
+    fetchHandler(url) {
+      if (url.includes('AKfycbwNoAHomZzaIT25QL7U7Tod9XA')) {
+        return { status: 500, body: 'Outage' };
+      }
+      return { status: 302, headers: { Location: 'https://accounts.google.com/ServiceLogin' } };
+    }
+  });
+
+  gas.ctx.runScheduledMonitoringCheck();
+  gas.ctx.runScheduledMonitoringCheck();
+  gas.ctx.apiSyncMonitoringTrigger();
+  gas.ctx.apiSaveMonitoringMaintenance({
+    titulo: 'Janela preventiva teste',
+    alvo: 'PEPOA',
+    estado: 'EM_ANDAMENTO',
+    inicio: '2026-11-25T08:00',
+    fim: '2026-11-25T18:00'
+  });
+
+  const adminBoot = gas.ctx.apiGetAdminBootstrap();
+  const adminHtml = gas.ctx.doGet({ parameter: { view: 'admin' } }).getContent();
+  const harness = createDomHarness(adminHtml);
+
+  for (const id of [
+    'loginGate', 'adminWorkspace', 'adminEmailLabel', 'statusSummary', 'lastUpdate',
+    'groupOficial', 'groupAudit', 'adminReleaseStateGrid', 'adminReleaseHistoryWrap',
+    'storageStatsLine', 'adminAnnListWrap', 'secStatusBadges',
+    'cfgTitle', 'cfgSubtitle', 'cfgObs', 'cfgMaxSegs', 'cfgReplaySec', 'cfgAdminEmails',
+    'monDiagnosticsBox', 'monEnabled', 'monInterval', 'monSlowMs', 'monFailThresh',
+    'monRecoveryThresh', 'monStaleMin', 'monHistDays', 'monDailyDays', 'monIncDays',
+    'monFetchMode', 'monEnvTogglesWrap', 'monIncidentsWrap', 'monMaintListWrap',
+    'btnThemeToggle', 'btnHealthCheck', 'btnReload', 'btnSave', 'btnReset',
+    'btnRecordRelease', 'btnResetAnnForm', 'btnSaveAnn', 'btnSaveSettings',
+    'btnAdminLogin', 'btnMonRunNow', 'btnMonSyncTrigger', 'btnSaveMonSettings',
+    'btnResetMaintForm', 'btnSaveMaint'
+  ]) {
+    harness.elements[id] = {
+      id,
+      value: '',
+      textContent: '',
+      innerHTML: '',
+      className: '',
+      style: {},
+      classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+      querySelectorAll() { return []; },
+      appendChild() {},
+      addEventListener() {}
+    };
+  }
+
+  harness.run({
+    withSuccessHandler(fn) {
+      return {
+        withFailureHandler() {
+          return {
+            apiGetAdminBootstrap() { fn(adminBoot); }
+          };
+        }
+      };
+    }
+  });
+
+  assert.equal(harness.elements.loginGate.style.display, 'none');
+  assert.equal(harness.elements.adminWorkspace.style.display, 'block');
+  assert.ok(harness.elements.monDiagnosticsBox.innerHTML.includes('1 trigger ativo (OK)'));
+  assert.ok(harness.elements.monDiagnosticsBox.innerHTML.includes('576'));
+  assert.ok(harness.elements.monDiagnosticsBox.innerHTML.includes('20000'));
+  assert.ok(harness.elements.monEnvTogglesWrap.innerHTML.includes('INDISPONIVEL'));
+  assert.ok(harness.elements.monEnvTogglesWrap.innerHTML.includes('AUTENTICACAO_NECESSARIA'));
+  assert.ok(harness.elements.monIncidentsWrap.innerHTML.includes('INVESTIGACAO'));
+  assert.ok(harness.elements.monMaintListWrap.innerHTML.includes('Janela preventiva teste'));
 });
