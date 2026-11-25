@@ -846,3 +846,64 @@ test('Segurança fail-closed bloqueia mutações anônimas/não autorizadas e pa
   delete missingEnv.madreAudit;
   assert.throws(() => admin.ctx.apiSaveAdminConfig(missingEnv), /esperado exatamente 6/);
 });
+
+test('doPost ações admin_* exigem autenticação (Google allowlist ou authToken), configuram credenciais sem expor segredos e preservam CONFIG_LINKS', () => {
+  const { ctx, store, setUserEmail } = createGasContext({ userEmail: '' });
+
+  // 1. Sem autenticação: bloqueia leitura e escrita admin_*
+  for (const action of ['admin_health', 'admin_bootstrap', 'admin_save_settings', 'admin_save_config']) {
+    const res = JSON.parse(ctx.doPost({
+      postData: { contents: JSON.stringify({ action, payload: {} }) }
+    }).getContent());
+    assert.equal(res.success, false);
+    assert.match(res.error, /Acesso negado/);
+  }
+
+  // 2. Via sessão Google autorizada: configura segredo HMAC e credencial admin sem retornar segredos
+  setUserEmail('lukaslaurinocppa@gmail.com');
+  const webhookSec = crypto.randomBytes(32).toString('hex');
+  const adminPass = crypto.randomBytes(32).toString('base64url');
+  const saveSecRes = JSON.parse(ctx.doPost({
+    postData: {
+      contents: JSON.stringify({
+        action: 'admin_save_settings',
+        payload: { newWebhookSecret: webhookSec, newAdminPasscode: adminPass }
+      })
+    }
+  }).getContent());
+  assert.equal(saveSecRes.success, true);
+  assert.equal(saveSecRes.webhookSecretConfigured, true);
+  assert.equal(saveSecRes.adminPasscodeConfigured, true);
+  assert.equal(JSON.stringify(saveSecRes).includes(webhookSec), false);
+  assert.equal(JSON.stringify(saveSecRes).includes(adminPass), false);
+  assert.equal(store.PORTAL_WEBHOOK_SECRET, webhookSec);
+  assert.ok(store.ADMIN_AUTH_HASH);
+  assert.ok(store.ADMIN_AUTH_SALT);
+
+  // 3. Sem sessão Google: autentica via admin_authenticate e executa leitura/escrita controlada
+  setUserEmail('');
+  const badAuth = JSON.parse(ctx.doPost({
+    postData: { contents: JSON.stringify({ action: 'admin_authenticate', email: 'lukaslaurinocppa@gmail.com', passcode: 'incorreta' }) }
+  }).getContent());
+  assert.equal(badAuth.success, false);
+
+  const okAuth = JSON.parse(ctx.doPost({
+    postData: { contents: JSON.stringify({ action: 'admin_authenticate', email: 'lukaslaurinocppa@gmail.com', passcode: adminPass }) }
+  }).getContent());
+  assert.equal(okAuth.success, true);
+  assert.ok(okAuth.authToken);
+
+  const bootRes = JSON.parse(ctx.doPost({
+    postData: { contents: JSON.stringify({ action: 'admin_bootstrap', authToken: okAuth.authToken }) }
+  }).getContent());
+  assert.equal(bootRes.success, true);
+  assert.equal(bootRes.authMethod, 'admin_key_session');
+  assert.equal(bootRes.securityStatus.webhookSecretConfigured, true);
+  assert.equal(bootRes.securityStatus.adminPasscodeConfigured, true);
+
+  const cfgRes = JSON.parse(ctx.doPost({
+    postData: { contents: JSON.stringify({ action: 'admin_save_config', payload: bootRes.config, authToken: okAuth.authToken }) }
+  }).getContent());
+  assert.equal(cfgRes.success, true);
+  assert.deepEqual(ctx.getConfig(), bootRes.config);
+});

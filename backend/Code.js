@@ -1259,6 +1259,36 @@ function doPost(e) {
     }
   }
 
+  if (body && typeof body.action === "string" && body.action.indexOf("admin_") === 0) {
+    try {
+      var adminAction = body.action;
+      var adminRes;
+      if (adminAction === "admin_authenticate") {
+        adminRes = apiAdminAuthenticate(body.email, body.passcode);
+      } else if (adminAction === "admin_health") {
+        adminRes = apiHealthCheck(body.authToken);
+      } else if (adminAction === "admin_bootstrap") {
+        adminRes = apiGetAdminBootstrap(body.authToken);
+      } else if (adminAction === "admin_save_settings") {
+        adminRes = apiSaveAdminSettings(body.payload, body.authToken);
+      } else if (adminAction === "admin_save_config") {
+        adminRes = apiSaveAdminConfig(body.payload, body.authToken);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: "Ação administrativa desconhecida: " + adminAction
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      return ContentService.createTextOutput(JSON.stringify(adminRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch (adminErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: adminErr.message || String(adminErr)
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   var userEmail = getActiveGoogleEmail_();
   if (!isAuthorizedUser(userEmail)) {
     return ContentService.createTextOutput(JSON.stringify({
