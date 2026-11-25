@@ -121,6 +121,7 @@ const VALID_INCIDENT_STATES = ["INVESTIGACAO", "CONFIRMADO", "RESOLVIDO", "ENCER
 const VALID_MAINTENANCE_STATES = ["PROGRAMADA", "EM_ANDAMENTO", "ENCERRADA", "CANCELADA"];
 const MONITOR_TRIGGER_HANDLER = "runScheduledMonitoringCheck_";
 const LEGACY_MONITOR_TRIGGER_HANDLER = "runScheduledMonitoringCheck";
+const MONITOR_TRIGGER_INSTALLER_KEY = "MONITOR_TRIGGER_INSTALLER_KEY";
 // Longer than the Apps Script execution limit, so a live cycle cannot lose its lease normally.
 const MONITOR_LEASE_MS = 7 * 60000;
 const MONITOR_MIN_AVAIL_SAMPLES = 4;
@@ -1220,7 +1221,7 @@ function getMonitorSettings_() {
       }
     }
     if (parsed.triggerId) base.triggerId = String(parsed.triggerId);
-    if (parsed.triggerOwner) base.triggerOwner = String(parsed.triggerOwner);
+    if (parsed.triggerInstallerKey) base.triggerInstallerKey = String(parsed.triggerInstallerKey);
     if (parsed.triggerSyncedInterval) base.triggerSyncedInterval = Number(parsed.triggerSyncedInterval);
     if (parsed.triggerLastSyncedAt) base.triggerLastSyncedAt = String(parsed.triggerLastSyncedAt);
     if (parsed.atualizadoEm) base.atualizadoEm = String(parsed.atualizadoEm);
@@ -2240,8 +2241,9 @@ function syncMonitoringTriggerInternal_() {
   return withScriptLock_(function () {
     try {
       var settings = getMonitorSettings_();
-      var owner = String(Session.getEffectiveUser().getEmail() || "").toLowerCase();
-      if (!owner || (settings.triggerOwner && settings.triggerOwner !== owner)) {
+      var installerProps = PropertiesService.getUserProperties();
+      var installerKey = installerProps.getProperty(MONITOR_TRIGGER_INSTALLER_KEY);
+      if (settings.triggerInstallerKey && settings.triggerInstallerKey !== installerKey) {
         return { success: false, synced: false, error: "Sincronize com a conta instaladora do gatilho do portal." };
       }
       var existing = ScriptApp.getProjectTriggers().filter(isMonitoringTrigger_);
@@ -2256,6 +2258,10 @@ function syncMonitoringTriggerInternal_() {
           keepId = registered.getUniqueId();
           action = "kept_existing";
         } else {
+          if (!installerKey) {
+            installerKey = Utilities.getUuid();
+            installerProps.setProperty(MONITOR_TRIGGER_INSTALLER_KEY, installerKey);
+          }
           var builder = ScriptApp.newTrigger(MONITOR_TRIGGER_HANDLER).timeBased();
           var schedule = settings.intervalMinutes === 60 ? builder.everyHours(1) : builder.everyMinutes(settings.intervalMinutes);
           keepId = schedule.create().getUniqueId();
@@ -2264,7 +2270,7 @@ function syncMonitoringTriggerInternal_() {
       }
       if (action !== "kept_existing") {
         settings.triggerId = keepId;
-        settings.triggerOwner = keepId ? owner : null;
+        settings.triggerInstallerKey = keepId ? installerKey : null;
         settings.triggerSyncedInterval = keepId ? settings.intervalMinutes : null;
         settings.triggerLastSyncedAt = new Date().toISOString();
         getProps_().setProperty(PROP_KEYS.MONITOR_SETTINGS, JSON.stringify(settings));

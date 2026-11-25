@@ -55,6 +55,7 @@ function signEvent(ev, secret, authTimestamp) {
 function createGasContext(options = {}) {
   const store = Object.assign({}, options.initialProperties || {});
   const cacheStore = Object.create(null);
+  const userStore = Object.create(null);
   let activeEmail = options.userEmail !== undefined ? options.userEmail : '';
   const serviceUrl = options.serviceUrl !== undefined ? options.serviceUrl : WEBAPP_EXEC_URL;
   let lockCalls = 0;
@@ -100,6 +101,12 @@ function createGasContext(options = {}) {
     encodeURIComponent,
     unescape,
     PropertiesService: {
+      getUserProperties() {
+        return {
+          getProperty(key) { return userStore[key] || null; },
+          setProperty(key, value) { userStore[key] = String(value); }
+        };
+      },
       getScriptProperties() {
         return {
           getProperty(key) {
@@ -184,7 +191,7 @@ function createGasContext(options = {}) {
     },
     Session: {
       getEffectiveUser() {
-        return { getEmail: () => options.effectiveEmail || 'deployer@example.com' };
+        throw new Error('Session.getEffectiveUser requires authorization in web runtime');
       },
       getActiveUser() {
         return {
